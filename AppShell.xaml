@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:views="clr-namespace:NetGuard.Views"
+       x:Class="NetGuard.AppShell"
+       Title="NetGuard"
+       FlyoutBehavior="Flyout"
+       FlyoutWidth="220">
+
+    <Shell.FlyoutHeader>
+        <VerticalStackLayout Padding="16,24,16,12"
+                             BackgroundColor="#1A202C">
+            <Label Text="🛡 NetGuard"
+                   FontSize="22" FontAttributes="Bold"
+                   TextColor="White"/>
+            <Label Text="Network Security Monitor"
+                   FontSize="12" TextColor="#A0AEC0" Margin="0,4,0,0"/>
+        </VerticalStackLayout>
+    </Shell.FlyoutHeader>
+
+    <FlyoutItem Title="Dashboard"   Icon="dashboard.png"  Route="dashboard">
+        <ShellContent ContentTemplate="{DataTemplate views:DashboardPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Network"     Icon="network.png"    Route="network">
+        <ShellContent ContentTemplate="{DataTemplate views:NetworkPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Processes"   Icon="process.png"    Route="processes">
+        <ShellContent ContentTemplate="{DataTemplate views:ProcessPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Whitelist"   Icon="rules.png"      Route="rules">
+        <ShellContent ContentTemplate="{DataTemplate views:RulesPage}" />
+    </FlyoutItem>
+
+    <FlyoutItem Title="Settings"    Icon="settings.png"   Route="settings">
+        <ShellContent ContentTemplate="{DataTemplate views:SettingsPage}" />
+    </FlyoutItem>
+
+    <Shell.FlyoutFooter>
+        <VerticalStackLayout Padding="16,12" BackgroundColor="#1A202C">
+            <Label Text="v1.0.0 — Desktop only"
+                   FontSize="11" TextColor="#718096" HorizontalOptions="Center"/>
+        </VerticalStackLayout>
+    </Shell.FlyoutFooter>
+
+</Shell>

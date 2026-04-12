@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:NetGuard.ViewModels"
+             xmlns:models="clr-namespace:NetGuard.Models"
+             x:Class="NetGuard.Views.ProcessPage"
+             Title="Process Scanner">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
+
+        <!-- Toolbar -->
+        <HorizontalStackLayout Grid.Row="0" Padding="20,16,20,8" Spacing="12">
+            <Label Text="Process Scanner" FontSize="22" FontAttributes="Bold"
+                   VerticalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#1A202C, Dark=#F7FAFC}"/>
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                               Color="#3182CE" WidthRequest="22" HeightRequest="22"
+                               VerticalOptions="Center"/>
+            <Label Text="{Binding StatusMessage}" VerticalOptions="Center" FontSize="13"
+                   TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+            <Button Text="⟳ Scan All" Command="{Binding ScanCommand}"
+                    BackgroundColor="#3182CE" TextColor="White"
+                    CornerRadius="8" Padding="12,7"
+                    HorizontalOptions="EndAndExpand"/>
+        </HorizontalStackLayout>
+
+        <!-- Progress bar -->
+        <ProgressBar Grid.Row="1" Margin="20,0"
+                     Progress="{Binding ScannedCount}"
+                     IsVisible="{Binding IsBusy}"
+                     ProgressColor="#3182CE"/>
+
+        <!-- Filter bar -->
+        <Grid Grid.Row="2" Padding="20,8,20,12"
+              ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+            <Border Grid.Column="0" StrokeShape="RoundRectangle 8"
+                    Stroke="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                    Padding="10,6">
+                <SearchBar Placeholder="Filter by name or path…"
+                           Text="{Binding FilterText}"
+                           BackgroundColor="Transparent"/>
+            </Border>
+            <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                <CheckBox IsChecked="{Binding ShowSystemProcesses}"/>
+                <Label Text="System processes" VerticalOptions="Center" FontSize="13"
+                       TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+            </HorizontalStackLayout>
+            <Label Grid.Column="2"
+                   Text="{Binding Processes.Count, StringFormat='{0} processes'}"
+                   VerticalOptions="Center" FontSize="13"
+                   TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+        </Grid>
+
+        <!-- Process list -->
+        <CollectionView Grid.Row="3"
+                        ItemsSource="{Binding Processes}"
+                        EmptyView="No processes found — run a scan first">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:ProcessInfo">
+                    <Grid Padding="20,4" MinimumHeightRequest="60">
+
+                        <Frame CornerRadius="8" Padding="14,10" HasShadow="False"
+                               BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#2D3748}">
+                            <Frame.Triggers>
+                                <DataTrigger TargetType="Frame"
+                                             Binding="{Binding Threat}" Value="High">
+                                    <Setter Property="BackgroundColor" Value="#FFF5F5"/>
+                                    <Setter Property="BorderColor"     Value="#FC8181"/>
+                                </DataTrigger>
+                                <DataTrigger TargetType="Frame"
+                                             Binding="{Binding Threat}" Value="Medium">
+                                    <Setter Property="BackgroundColor" Value="#FFFAF0"/>
+                                    <Setter Property="BorderColor"     Value="#F6AD55"/>
+                                </DataTrigger>
+                            </Frame.Triggers>
+
+                            <Grid ColumnDefinitions="44,*,100,90,90,80">
+
+                                <!-- Threat icon -->
+                                <Label Grid.Column="0" FontSize="24" VerticalOptions="Center"
+                                       HorizontalOptions="Center">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label"
+                                                     Binding="{Binding Threat}" Value="High">
+                                            <Setter Property="Text" Value="⛔"/>
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Label"
+                                                     Binding="{Binding Threat}" Value="Medium">
+                                            <Setter Property="Text" Value="⚠"/>
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Label"
+                                                     Binding="{Binding Threat}" Value="Clean">
+                                            <Setter Property="Text" Value="✅"/>
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Label"
+                                                     Binding="{Binding Threat}" Value="Unknown">
+                                            <Setter Property="Text" Value="⏳"/>
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+
+                                <!-- Name + path -->
+                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center"
+                                                     Spacing="2">
+                                    <HorizontalStackLayout Spacing="8">
+                                        <Label Text="{Binding Name}" FontAttributes="Bold"
+                                               FontSize="14"
+                                               TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+                                        <Label Text="[signed]" FontSize="11" IsVisible="{Binding IsSigned}"
+                                               TextColor="#38A169" VerticalOptions="Center"/>
+                                    </HorizontalStackLayout>
+                                    <Label Text="{Binding Path}" FontSize="11"
+                                           TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"
+                                           LineBreakMode="MiddleTruncation"/>
+                                    <Label Text="{Binding ThreatDetail}" FontSize="11"
+                                           IsVisible="{Binding IsScanned}"
+                                           TextColor="{AppThemeBinding Light=#C53030, Dark=#FC8181}"
+                                           IsVisible2="{Binding ThreatDetail,
+                                               Converter={StaticResource IsNotEmptyConverter}}"/>
+                                </VerticalStackLayout>
+
+                                <!-- PID -->
+                                <VerticalStackLayout Grid.Column="2" VerticalOptions="Center"
+                                                     Spacing="2">
+                                    <Label Text="PID" FontSize="10"
+                                           TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
+                                    <Label Text="{Binding Pid}" FontSize="13"
+                                           TextColor="{AppThemeBinding Light=#4A5568, Dark=#CBD5E0}"/>
+                                </VerticalStackLayout>
+
+                                <!-- Memory -->
+                                <VerticalStackLayout Grid.Column="3" VerticalOptions="Center"
+                                                     Spacing="2">
+                                    <Label Text="Memory" FontSize="10"
+                                           TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
+                                    <Label Text="{Binding MemoryKb, StringFormat='{0:N0} KB'}"
+                                           FontSize="13"
+                                           TextColor="{AppThemeBinding Light=#4A5568, Dark=#CBD5E0}"/>
+                                </VerticalStackLayout>
+
+                                <!-- Hash (truncated) -->
+                                <VerticalStackLayout Grid.Column="4" VerticalOptions="Center"
+                                                     Spacing="2">
+                                    <Label Text="SHA-256" FontSize="10"
+                                           TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
+                                    <Label Text="{Binding Hash}" FontSize="10"
+                                           TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"
+                                           LineBreakMode="TailTruncation"/>
+                                </VerticalStackLayout>
+
+                                <!-- Status -->
+                                <Border Grid.Column="5"
+                                        StrokeShape="RoundRectangle 4"
+                                        Stroke="Transparent"
+                                        Padding="6,3"
+                                        VerticalOptions="Center"
+                                        HorizontalOptions="Center">
+                                    <Border.Triggers>
+                                        <DataTrigger TargetType="Border"
+                                                     Binding="{Binding Threat}" Value="High">
+                                            <Setter Property="BackgroundColor" Value="#FED7D7"/>
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Border"
+                                                     Binding="{Binding Threat}" Value="Medium">
+                                            <Setter Property="BackgroundColor" Value="#FEEBC8"/>
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Border"
+                                                     Binding="{Binding Threat}" Value="Clean">
+                                            <Setter Property="BackgroundColor" Value="#C6F6D5"/>
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Border"
+                                                     Binding="{Binding Threat}" Value="Unknown">
+                                            <Setter Property="BackgroundColor" Value="#EDF2F7"/>
+                                        </DataTrigger>
+                                    </Border.Triggers>
+                                    <Label Text="{Binding Threat}" FontSize="11"
+                                           HorizontalOptions="Center">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label"
+                                                         Binding="{Binding Threat}" Value="High">
+                                                <Setter Property="TextColor" Value="#C53030"/>
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Label"
+                                                         Binding="{Binding Threat}" Value="Medium">
+                                                <Setter Property="TextColor" Value="#C05621"/>
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Label"
+                                                         Binding="{Binding Threat}" Value="Clean">
+                                                <Setter Property="TextColor" Value="#276749"/>
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Label"
+                                                         Binding="{Binding Threat}" Value="Unknown">
+                                                <Setter Property="TextColor" Value="#718096"/>
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                </Border>
+
+                            </Grid>
+                        </Frame>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </Grid>
+</ContentPage>

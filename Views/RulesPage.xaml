@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:NetGuard.ViewModels"
+             xmlns:models="clr-namespace:NetGuard.Models"
+             x:Class="NetGuard.Views.RulesPage"
+             Title="Whitelist Rules">
+
+    <Grid RowDefinitions="Auto,Auto,*">
+
+        <!-- Header -->
+        <HorizontalStackLayout Grid.Row="0" Padding="20,16,20,8" Spacing="12">
+            <Label Text="Whitelist Rules" FontSize="22" FontAttributes="Bold"
+                   VerticalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#1A202C, Dark=#F7FAFC}"/>
+            <Label Text="{Binding Rules.Count, StringFormat='{0} rules'}"
+                   VerticalOptions="Center" FontSize="13"
+                   TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+        </HorizontalStackLayout>
+
+        <!-- Add Rule Form -->
+        <Frame Grid.Row="1" Margin="20,0,20,12" CornerRadius="10" Padding="16" HasShadow="False"
+               BackgroundColor="{AppThemeBinding Light=#F7FAFC, Dark=#2D3748}">
+            <VerticalStackLayout Spacing="10">
+                <Label Text="Add new rule" FontAttributes="Bold" FontSize="14"
+                       TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+                <Grid ColumnDefinitions="*,160,160,100" ColumnSpacing="10">
+                    <!-- Pattern -->
+                    <Border Grid.Column="0" StrokeShape="RoundRectangle 8"
+                            Stroke="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                            Padding="10,8">
+                        <Entry Placeholder="e.g. *.google.com  or  8.8.8.8"
+                               Text="{Binding NewPattern}"
+                               BackgroundColor="Transparent"/>
+                    </Border>
+
+                    <!-- Description -->
+                    <Border Grid.Column="1" StrokeShape="RoundRectangle 8"
+                            Stroke="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                            Padding="10,8">
+                        <Entry Placeholder="Description (optional)"
+                               Text="{Binding NewDescription}"
+                               BackgroundColor="Transparent"/>
+                    </Border>
+
+                    <!-- Type picker -->
+                    <Border Grid.Column="2" StrokeShape="RoundRectangle 8"
+                            Stroke="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                            Padding="4,0">
+                        <Picker SelectedItem="{Binding NewType}" Title="Type"
+                                BackgroundColor="Transparent">
+                            <Picker.ItemsSource>
+                                <x:Array Type="{x:Type models:RuleType}">
+                                    <models:RuleType>Domain</models:RuleType>
+                                    <models:RuleType>Ip</models:RuleType>
+                                    <models:RuleType>IpRange</models:RuleType>
+                                    <models:RuleType>ProcessName</models:RuleType>
+                                </x:Array>
+                            </Picker.ItemsSource>
+                        </Picker>
+                    </Border>
+
+                    <!-- Add button -->
+                    <Button Grid.Column="3" Text="+ Add"
+                            Command="{Binding AddRuleCommand}"
+                            BackgroundColor="#38A169" TextColor="White"
+                            CornerRadius="8"/>
+                </Grid>
+
+                <Label Text="Wildcards: *.domain.com matches domain.com and all subdomains"
+                       FontSize="11"
+                       TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
+            </VerticalStackLayout>
+        </Frame>
+
+        <!-- Rules List -->
+        <CollectionView Grid.Row="2"
+                        ItemsSource="{Binding Rules}"
+                        Margin="20,0"
+                        EmptyView="No rules yet — add one above">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:WhitelistRule">
+                    <Grid Padding="0,3">
+                        <Frame CornerRadius="8" Padding="14,10" HasShadow="False"
+                               BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#2D3748}">
+                            <Grid ColumnDefinitions="36,*,100,80,80,44,44">
+
+                                <!-- Enabled indicator -->
+                                <Ellipse Grid.Column="0"
+                                         WidthRequest="12" HeightRequest="12"
+                                         VerticalOptions="Center"
+                                         HorizontalOptions="Center">
+                                    <Ellipse.Triggers>
+                                        <DataTrigger TargetType="Ellipse"
+                                                     Binding="{Binding IsEnabled}" Value="True">
+                                            <Setter Property="Fill" Value="#38A169"/>
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Ellipse"
+                                                     Binding="{Binding IsEnabled}" Value="False">
+                                            <Setter Property="Fill" Value="#CBD5E0"/>
+                                        </DataTrigger>
+                                    </Ellipse.Triggers>
+                                </Ellipse>
+
+                                <!-- Pattern + Description -->
+                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center"
+                                                     Spacing="2">
+                                    <Label Text="{Binding Pattern}" FontAttributes="Bold"
+                                           FontSize="14"
+                                           TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+                                    <Label Text="{Binding Description}" FontSize="12"
+                                           TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"
+                                           IsVisible="{Binding Description,
+                                               Converter={StaticResource IsNotEmptyConverter}}"/>
+                                </VerticalStackLayout>
+
+                                <!-- Type badge -->
+                                <Border Grid.Column="2"
+                                        StrokeShape="RoundRectangle 4"
+                                        BackgroundColor="{AppThemeBinding Light=#EBF8FF, Dark=#2A4365}"
+                                        Stroke="Transparent"
+                                        Padding="6,3"
+                                        VerticalOptions="Center"
+                                        HorizontalOptions="Start">
+                                    <Label Text="{Binding Type}" FontSize="11"
+                                           TextColor="{AppThemeBinding Light=#2B6CB0, Dark=#63B3ED}"/>
+                                </Border>
+
+                                <!-- Created At -->
+                                <Label Grid.Column="3"
+                                       Text="{Binding CreatedAt, StringFormat='{0:yyyy-MM-dd}'}"
+                                       FontSize="11" VerticalOptions="Center"
+                                       TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
+
+                                <!-- Status text -->
+                                <Label Grid.Column="4"
+                                       Text="{Binding IsEnabled, Converter={StaticResource BoolToStringConverter},
+                                           ConverterParameter='Enabled|Disabled'}"
+                                       FontSize="12" VerticalOptions="Center"
+                                       HorizontalOptions="Center">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label"
+                                                     Binding="{Binding IsEnabled}" Value="True">
+                                            <Setter Property="TextColor" Value="#38A169"/>
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Label"
+                                                     Binding="{Binding IsEnabled}" Value="False">
+                                            <Setter Property="TextColor" Value="#A0AEC0"/>
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+
+                                <!-- Toggle button -->
+                                <Button Grid.Column="5"
+                                        Text="⇄"
+                                        Command="{Binding Source={RelativeSource
+                                            AncestorType={x:Type vm:RulesViewModel}},
+                                            Path=ToggleRuleCommand}"
+                                        CommandParameter="{Binding .}"
+                                        BackgroundColor="Transparent"
+                                        TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"
+                                        FontSize="18" Padding="0"/>
+
+                                <!-- Delete button -->
+                                <Button Grid.Column="6"
+                                        Text="✕"
+                                        Command="{Binding Source={RelativeSource
+                                            AncestorType={x:Type vm:RulesViewModel}},
+                                            Path=DeleteRuleCommand}"
+                                        CommandParameter="{Binding .}"
+                                        BackgroundColor="Transparent"
+                                        TextColor="#FC8181"
+                                        FontSize="16" Padding="0"/>
+                            </Grid>
+                        </Frame>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </Grid>
+</ContentPage>

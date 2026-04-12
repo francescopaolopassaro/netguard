@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:NetGuard.ViewModels"
+             x:Class="NetGuard.Views.SettingsPage"
+             Title="Settings">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="24" MaximumWidthRequest="680"
+                             HorizontalOptions="Start">
+
+            <Label Text="Settings" FontSize="24" FontAttributes="Bold"
+                   TextColor="{AppThemeBinding Light=#1A202C, Dark=#F7FAFC}"/>
+
+            <!-- ── Threat Intelligence APIs ─────────────────── -->
+            <Frame CornerRadius="10" Padding="20" HasShadow="False"
+                   BackgroundColor="{AppThemeBinding Light=#F7FAFC, Dark=#2D3748}">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="Threat Intelligence APIs" FontAttributes="Bold" FontSize="16"
+                           TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+                    <Label Text="Free tier: VirusTotal 4 req/min · AbuseIPDB 1000 req/day · MalwareBazaar unlimited"
+                           FontSize="12" TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+
+                    <!-- VirusTotal -->
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="VirusTotal API Key" FontSize="13" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=#4A5568, Dark=#CBD5E0}"/>
+                        <HorizontalStackLayout Spacing="8">
+                            <Border StrokeShape="RoundRectangle 8"
+                                    Stroke="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                                    Padding="12,8" HorizontalOptions="FillAndExpand">
+                                <Entry IsPassword="True"
+                                       Placeholder="Enter VirusTotal API key…"
+                                       Text="{Binding VirusTotalApiKey}"
+                                       BackgroundColor="Transparent"/>
+                            </Border>
+                            <Button Text="Get key"
+                                    BackgroundColor="Transparent"
+                                    TextColor="#3182CE" FontSize="13"
+                                    Padding="0"/>
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+
+                    <!-- AbuseIPDB -->
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="AbuseIPDB API Key" FontSize="13" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=#4A5568, Dark=#CBD5E0}"/>
+                        <Border StrokeShape="RoundRectangle 8"
+                                Stroke="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                                Padding="12,8">
+                            <Entry IsPassword="True"
+                                   Placeholder="Enter AbuseIPDB API key…"
+                                   Text="{Binding AbuseIpDbApiKey}"
+                                   BackgroundColor="Transparent"/>
+                        </Border>
+                    </VerticalStackLayout>
+
+                    <Label Text="MalwareBazaar (abuse.ch) — no API key required"
+                           FontSize="12" TextColor="#38A169"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- ── DNS Settings ────────────────────────────── -->
+            <Frame CornerRadius="10" Padding="20" HasShadow="False"
+                   BackgroundColor="{AppThemeBinding Light=#F7FAFC, Dark=#2D3748}">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="DNS Settings" FontAttributes="Bold" FontSize="16"
+                           TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <VerticalStackLayout Grid.Column="0" Spacing="6">
+                            <Label Text="Primary DNS (DoH)" FontSize="13" FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=#4A5568, Dark=#CBD5E0}"/>
+                            <Border StrokeShape="RoundRectangle 8"
+                                    Stroke="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                                    Padding="12,8">
+                                <Entry Text="{Binding PrimaryDns}"
+                                       Placeholder="9.9.9.9 (Quad9)"
+                                       BackgroundColor="Transparent"/>
+                            </Border>
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="6">
+                            <Label Text="Fallback DNS" FontSize="13" FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=#4A5568, Dark=#CBD5E0}"/>
+                            <Border StrokeShape="RoundRectangle 8"
+                                    Stroke="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                                    Padding="12,8">
+                                <Entry Text="{Binding FallbackDns}"
+                                       Placeholder="1.1.1.1 (Cloudflare)"
+                                       BackgroundColor="Transparent"/>
+                            </Border>
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <HorizontalStackLayout Spacing="12">
+                        <Switch IsToggled="{Binding UseDoh}"/>
+                        <VerticalStackLayout VerticalOptions="Center">
+                            <Label Text="Use DNS over HTTPS (DoH)" FontSize="13" FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=#4A5568, Dark=#CBD5E0}"/>
+                            <Label Text="Encrypts DNS queries, prevents man-in-the-middle interception"
+                                   FontSize="11"
+                                   TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
+                        </VerticalStackLayout>
+                    </HorizontalStackLayout>
+
+                    <Frame CornerRadius="6" Padding="12,8" HasShadow="False"
+                           BackgroundColor="{AppThemeBinding Light=#EBF8FF, Dark=#2A4365}">
+                        <Label FontSize="12"
+                               TextColor="{AppThemeBinding Light=#2B6CB0, Dark=#63B3ED}">
+                            <Label.FormattedText>
+                                <FormattedString>
+                                    <Span Text="ℹ  " FontAttributes="Bold"/>
+                                    <Span Text="Quad9 (9.9.9.9) automatically blocks known malicious domains. Domains blocked here are flagged as "/>
+                                    <Span Text="High" FontAttributes="Bold"/>
+                                    <Span Text=" threat."/>
+                                </FormattedString>
+                            </Label.FormattedText>
+                        </Label>
+                    </Frame>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- ── Scan Behaviour ─────────────────────────── -->
+            <Frame CornerRadius="10" Padding="20" HasShadow="False"
+                   BackgroundColor="{AppThemeBinding Light=#F7FAFC, Dark=#2D3748}">
+                <VerticalStackLayout Spacing="14">
+                    <Label Text="Scan Behaviour" FontAttributes="Bold" FontSize="16"
+                           TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="{Binding ScanInterval, StringFormat='Auto-refresh interval: {0} seconds'}"
+                               FontSize="13" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=#4A5568, Dark=#CBD5E0}"/>
+                        <Slider Minimum="10" Maximum="300" Value="{Binding ScanInterval}"
+                                MinimumTrackColor="#3182CE" MaximumTrackColor="#CBD5E0"/>
+                        <HorizontalStackLayout HorizontalOptions="FillAndExpand">
+                            <Label Text="10 s" FontSize="11"
+                                   TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
+                            <Label Text="300 s" FontSize="11" HorizontalOptions="EndAndExpand"
+                                   TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+
+                    <HorizontalStackLayout Spacing="12">
+                        <Switch IsToggled="{Binding NotifyOnThreat}"/>
+                        <VerticalStackLayout VerticalOptions="Center">
+                            <Label Text="Show notification on threat detected" FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="{AppThemeBinding Light=#4A5568, Dark=#CBD5E0}"/>
+                            <Label Text="Displays a system notification when a malicious process or domain is found"
+                                   FontSize="11"
+                                   TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
+                        </VerticalStackLayout>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Status + Save -->
+            <HorizontalStackLayout Spacing="16">
+                <Button Text="💾 Save Settings" Command="{Binding SaveCommand}"
+                        BackgroundColor="#3182CE" TextColor="White"
+                        CornerRadius="8" Padding="20,10" FontSize="15"/>
+                <Label Text="{Binding StatusMessage}" VerticalOptions="Center"
+                       TextColor="#38A169" FontSize="14"/>
+            </HorizontalStackLayout>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

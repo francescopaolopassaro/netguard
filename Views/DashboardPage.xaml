@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:NetGuard.ViewModels"
+             xmlns:models="clr-namespace:NetGuard.Models"
+             x:Class="NetGuard.Views.DashboardPage"
+             Title="Dashboard">
+
+    <ContentPage.BindingContext>
+        <vm:DashboardViewModel />
+    </ContentPage.BindingContext>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="20">
+
+            <!-- Header -->
+            <HorizontalStackLayout Spacing="12">
+                <Label Text="System Overview" FontSize="24" FontAttributes="Bold"
+                       VerticalOptions="Center" TextColor="{AppThemeBinding Light=#1A202C, Dark=#F7FAFC}"/>
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                                   Color="#3182CE" WidthRequest="24" HeightRequest="24"
+                                   VerticalOptions="Center"/>
+                <Button Text="⟳ Refresh" Command="{Binding RefreshCommand}"
+                        BackgroundColor="#3182CE" TextColor="White"
+                        CornerRadius="8" Padding="12,8"
+                        HorizontalOptions="EndAndExpand"/>
+            </HorizontalStackLayout>
+
+            <!-- Overall Status Banner -->
+            <Frame CornerRadius="12" Padding="20,16" HasShadow="False"
+                   BackgroundColor="{Binding OverallStatusColor}">
+                <HorizontalStackLayout Spacing="12">
+                    <Label Text="●" FontSize="18" TextColor="White" VerticalOptions="Center"/>
+                    <Label Text="{Binding OverallStatus}" FontSize="18" FontAttributes="Bold"
+                           TextColor="White" VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+            </Frame>
+
+            <!-- Stats Grid -->
+            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="12">
+                <!-- Connections -->
+                <Frame Grid.Column="0" CornerRadius="10" Padding="16" HasShadow="False"
+                       BackgroundColor="{AppThemeBinding Light=#EBF8FF, Dark=#2C3E50}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="🌐" FontSize="28" HorizontalOptions="Center"/>
+                        <Label Text="{Binding ActiveConnections}" FontSize="32" FontAttributes="Bold"
+                               HorizontalOptions="Center"
+                               TextColor="{AppThemeBinding Light=#2B6CB0, Dark=#63B3ED}"/>
+                        <Label Text="Connections" FontSize="12" HorizontalOptions="Center"
+                               TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Processes -->
+                <Frame Grid.Column="1" CornerRadius="10" Padding="16" HasShadow="False"
+                       BackgroundColor="{AppThemeBinding Light=#F0FFF4, Dark=#2C3E50}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="⚙" FontSize="28" HorizontalOptions="Center"/>
+                        <Label Text="{Binding ActiveProcesses}" FontSize="32" FontAttributes="Bold"
+                               HorizontalOptions="Center"
+                               TextColor="{AppThemeBinding Light=#276749, Dark=#68D391}"/>
+                        <Label Text="Processes" FontSize="12" HorizontalOptions="Center"
+                               TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Threats -->
+                <Frame Grid.Column="2" CornerRadius="10" Padding="16" HasShadow="False"
+                       BackgroundColor="{AppThemeBinding Light=#FFF5F5, Dark=#3D2020}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="⚠" FontSize="28" HorizontalOptions="Center"/>
+                        <Label Text="{Binding ThreatCount}" FontSize="32" FontAttributes="Bold"
+                               HorizontalOptions="Center"
+                               TextColor="{AppThemeBinding Light=#C53030, Dark=#FC8181}"/>
+                        <Label Text="Threats" FontSize="12" HorizontalOptions="Center"
+                               TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- Alerts -->
+                <Frame Grid.Column="3" CornerRadius="10" Padding="16" HasShadow="False"
+                       BackgroundColor="{AppThemeBinding Light=#FFFAF0, Dark=#2D2820}">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Text="🔔" FontSize="28" HorizontalOptions="Center"/>
+                        <Label Text="{Binding UnreadAlerts}" FontSize="32" FontAttributes="Bold"
+                               HorizontalOptions="Center"
+                               TextColor="{AppThemeBinding Light=#C05621, Dark=#F6AD55}"/>
+                        <Label Text="Unread Alerts" FontSize="12" HorizontalOptions="Center"
+                               TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+                    </VerticalStackLayout>
+                </Frame>
+            </Grid>
+
+            <!-- Recent Alerts -->
+            <Label Text="Recent Alerts" FontSize="18" FontAttributes="Bold"
+                   TextColor="{AppThemeBinding Light=#1A202C, Dark=#F7FAFC}"/>
+
+            <CollectionView ItemsSource="{Binding RecentAlerts}"
+                            EmptyView="No alerts — system is clean ✓"
+                            HeightRequest="380">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:Alert">
+                        <Grid Padding="0,4">
+                            <Frame CornerRadius="8" Padding="14,10" HasShadow="False"
+                                   BackgroundColor="{AppThemeBinding Light=#F7FAFC, Dark=#2D3748}">
+                                <Grid ColumnDefinitions="28,*,80">
+                                    <Label Grid.Column="0" Text="{Binding Icon}"
+                                           FontSize="18" VerticalOptions="Center"/>
+                                    <VerticalStackLayout Grid.Column="1" Margin="8,0">
+                                        <Label Text="{Binding Title}" FontAttributes="Bold"
+                                               TextColor="{Binding SeverityColor}"/>
+                                        <Label Text="{Binding Detail}" FontSize="12"
+                                               TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"
+                                               LineBreakMode="TailTruncation"/>
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="2"
+                                           Text="{Binding At, StringFormat='{0:HH:mm:ss}'}"
+                                           FontSize="11" VerticalOptions="Start"
+                                           HorizontalOptions="End"
+                                           TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
+                                </Grid>
+                            </Frame>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

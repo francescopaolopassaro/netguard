@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- ── Brand colors ─────────────────────────────────────── -->
+    <Color x:Key="Primary">#3182CE</Color>
+    <Color x:Key="PrimaryDark">#2B6CB0</Color>
+    <Color x:Key="Secondary">#38A169</Color>
+    <Color x:Key="Danger">#E53E3E</Color>
+    <Color x:Key="Warning">#D97706</Color>
+    <Color x:Key="Info">#2B6CB0</Color>
+
+    <!-- ── Neutrals ──────────────────────────────────────────── -->
+    <Color x:Key="Gray50">#F9FAFB</Color>
+    <Color x:Key="Gray100">#F3F4F6</Color>
+    <Color x:Key="Gray200">#E5E7EB</Color>
+    <Color x:Key="Gray300">#D1D5DB</Color>
+    <Color x:Key="Gray400">#9CA3AF</Color>
+    <Color x:Key="Gray500">#6B7280</Color>
+    <Color x:Key="Gray600">#4B5563</Color>
+    <Color x:Key="Gray700">#374151</Color>
+    <Color x:Key="Gray800">#1F2937</Color>
+    <Color x:Key="Gray900">#111827</Color>
+
+    <!-- ── Surface (light) ──────────────────────────────────── -->
+    <Color x:Key="SurfaceLight">#FFFFFF</Color>
+    <Color x:Key="SurfaceLightSecondary">#F7FAFC</Color>
+
+    <!-- ── Surface (dark) ───────────────────────────────────── -->
+    <Color x:Key="SurfaceDark">#1A202C</Color>
+    <Color x:Key="SurfaceDarkSecondary">#2D3748</Color>
+
+</ResourceDictionary>

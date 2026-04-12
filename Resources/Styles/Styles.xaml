@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                    xmlns:converters="clr-namespace:NetGuard.Converters">
+
+    <!-- ── Converters (global) ──────────────────────────────── -->
+    <converters:IsNotEmptyConverter     x:Key="IsNotEmptyConverter"/>
+    <converters:BoolToStringConverter   x:Key="BoolToStringConverter"/>
+    <converters:ThreatLevelToColorConverter x:Key="ThreatLevelToColor"/>
+    <converters:IsThreatConverter       x:Key="IsThreatConverter"/>
+    <converters:BytesToHumanConverter   x:Key="BytesToHuman"/>
+
+    <!-- ── Shell ─────────────────────────────────────────────── -->
+    <Style TargetType="Shell" ApplyToDerivedTypes="True">
+        <Setter Property="Shell.BackgroundColor"
+                Value="{AppThemeBinding Light=#1A202C, Dark=#111827}"/>
+        <Setter Property="Shell.ForegroundColor" Value="White"/>
+        <Setter Property="Shell.TitleColor"      Value="White"/>
+        <Setter Property="Shell.DisabledColor"   Value="#718096"/>
+        <Setter Property="Shell.UnselectedColor" Value="#A0AEC0"/>
+        <Setter Property="Shell.NavBarHasShadow" Value="False"/>
+    </Style>
+
+    <!-- ── Global Label ─────────────────────────────────────── -->
+    <Style TargetType="Label">
+        <Setter Property="TextColor"
+                Value="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+        <Setter Property="FontFamily" Value="OpenSansRegular"/>
+    </Style>
+
+    <!-- ── Entry ────────────────────────────────────────────── -->
+    <Style TargetType="Entry">
+        <Setter Property="TextColor"
+                Value="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+        <Setter Property="PlaceholderColor"
+                Value="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
+        <Setter Property="FontSize" Value="14"/>
+    </Style>
+
+    <!-- ── Button (primary) ─────────────────────────────────── -->
+    <Style TargetType="Button">
+        <Setter Property="FontFamily"  Value="OpenSansSemiBold"/>
+        <Setter Property="FontSize"    Value="14"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="VisualStateManager.VisualStateGroups">
+            <VisualStateGroupList>
+                <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal"/>
+                    <VisualState x:Name="Disabled">
+                        <VisualState.Setters>
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateGroupList>
+        </Setter>
+    </Style>
+
+    <!-- ── Frame (card) ─────────────────────────────────────── -->
+    <Style TargetType="Frame">
+        <Setter Property="BackgroundColor"
+                Value="{AppThemeBinding Light=#FFFFFF, Dark=#2D3748}"/>
+        <Setter Property="BorderColor"
+                Value="{AppThemeBinding Light=#E2E8F0, Dark=#4A5568}"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="HasShadow"    Value="False"/>
+    </Style>
+
+    <!-- ── ContentPage ──────────────────────────────────────── -->
+    <Style TargetType="ContentPage" ApplyToDerivedTypes="True">
+        <Setter Property="BackgroundColor"
+                Value="{AppThemeBinding Light=#F0F4F8, Dark=#1A202C}"/>
+    </Style>
+
+    <!-- ── SearchBar ─────────────────────────────────────────── -->
+    <Style TargetType="SearchBar">
+        <Setter Property="TextColor"
+                Value="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+        <Setter Property="PlaceholderColor"
+                Value="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
+        <Setter Property="CancelButtonColor" Value="#718096"/>
+        <Setter Property="FontSize"          Value="14"/>
+    </Style>
+
+</ResourceDictionary>

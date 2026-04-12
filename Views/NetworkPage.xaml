@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:NetGuard.ViewModels"
+             xmlns:models="clr-namespace:NetGuard.Models"
+             x:Class="NetGuard.Views.NetworkPage"
+             Title="Network Monitor">
+
+    <ContentPage.Resources>
+        <Style x:Key="ThreatBadge" TargetType="Label">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="HorizontalOptions" Value="Start"/>
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,*">
+
+        <!-- Toolbar -->
+        <HorizontalStackLayout Grid.Row="0" Padding="20,16,20,8" Spacing="12">
+            <Label Text="Network Connections" FontSize="22" FontAttributes="Bold"
+                   VerticalOptions="Center"
+                   TextColor="{AppThemeBinding Light=#1A202C, Dark=#F7FAFC}"/>
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
+                               Color="#3182CE" WidthRequest="22" HeightRequest="22"
+                               VerticalOptions="Center"/>
+            <Button Text="⟳ Refresh" Command="{Binding RefreshCommand}"
+                    BackgroundColor="#3182CE" TextColor="White"
+                    CornerRadius="8" Padding="12,7"
+                    HorizontalOptions="EndAndExpand"/>
+        </HorizontalStackLayout>
+
+        <!-- Filters -->
+        <Grid Grid.Row="1" Padding="20,0,20,12"
+              ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+            <Border Grid.Column="0" StrokeShape="RoundRectangle 8"
+                    Stroke="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                    Padding="10,6">
+                <SearchBar Placeholder="Filter by IP, domain or process…"
+                           Text="{Binding FilterText}"
+                           BackgroundColor="Transparent"/>
+            </Border>
+            <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                <CheckBox IsChecked="{Binding ShowAllStates}"/>
+                <Label Text="Show all states" VerticalOptions="Center" FontSize="13"
+                       TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+            </HorizontalStackLayout>
+            <Label Grid.Column="2"
+                   Text="{Binding Connections.Count, StringFormat='{0} connections'}"
+                   VerticalOptions="Center" FontSize="13"
+                   TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+        </Grid>
+
+        <!-- Column Headers -->
+        <Grid Grid.Row="2" RowDefinitions="Auto,*">
+            <Grid Grid.Row="0" Padding="20,0,20,4"
+                  ColumnDefinitions="80,*,120,100,80,90"
+                  BackgroundColor="{AppThemeBinding Light=#EDF2F7, Dark=#2D3748}">
+                <Label Grid.Column="0" Text="Protocol" FontSize="12" FontAttributes="Bold"
+                       Padding="0,6" TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+                <Label Grid.Column="1" Text="Destination" FontSize="12" FontAttributes="Bold"
+                       Padding="0,6" TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+                <Label Grid.Column="2" Text="Port" FontSize="12" FontAttributes="Bold"
+                       Padding="0,6" TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+                <Label Grid.Column="3" Text="State" FontSize="12" FontAttributes="Bold"
+                       Padding="0,6" TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+                <Label Grid.Column="4" Text="Process" FontSize="12" FontAttributes="Bold"
+                       Padding="0,6" TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+                <Label Grid.Column="5" Text="Threat" FontSize="12" FontAttributes="Bold"
+                       Padding="0,6" TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+            </Grid>
+
+            <!-- Connection List -->
+            <CollectionView Grid.Row="1"
+                            ItemsSource="{Binding Connections}"
+                            EmptyView="No connections found">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:NetworkConnection">
+                        <Grid Padding="20,0" ColumnDefinitions="80,*,120,100,80,90"
+                              MinimumHeightRequest="44">
+                            <!-- Alternating row bg handled via triggers -->
+                            <BoxView Grid.ColumnSpan="6"
+                                     Color="{AppThemeBinding Light=#FAFAFA, Dark=#1A202C}"
+                                     Opacity="0.5"/>
+
+                            <!-- Protocol pill -->
+                            <Border Grid.Column="0"
+                                    StrokeShape="RoundRectangle 4"
+                                    BackgroundColor="{AppThemeBinding Light=#EBF8FF, Dark=#2A4365}"
+                                    Stroke="Transparent"
+                                    HorizontalOptions="Start"
+                                    VerticalOptions="Center"
+                                    Padding="6,2">
+                                <Label Text="{Binding Protocol}" FontSize="11"
+                                       TextColor="{AppThemeBinding Light=#2B6CB0, Dark=#63B3ED}"/>
+                            </Border>
+
+                            <!-- Destination -->
+                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center"
+                                                 Padding="0,4">
+                                <Label Text="{Binding Domain}" FontSize="13" FontAttributes="Bold"
+                                       IsVisible="{Binding Domain, Converter={StaticResource IsNotEmptyConverter}}"
+                                       TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"
+                                       LineBreakMode="TailTruncation"/>
+                                <Label Text="{Binding RemoteAddress}" FontSize="12"
+                                       TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                            </VerticalStackLayout>
+
+                            <!-- Port -->
+                            <Label Grid.Column="2" Text="{Binding RemotePort}"
+                                   VerticalOptions="Center" FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#4A5568, Dark=#CBD5E0}"/>
+
+                            <!-- State -->
+                            <Label Grid.Column="3" Text="{Binding State}"
+                                   VerticalOptions="Center" FontSize="12"
+                                   TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+
+                            <!-- Process -->
+                            <Label Grid.Column="4" Text="{Binding ProcessName}"
+                                   VerticalOptions="Center" FontSize="12"
+                                   TextColor="{AppThemeBinding Light=#4A5568, Dark=#CBD5E0}"
+                                   LineBreakMode="TailTruncation"/>
+
+                            <!-- Threat Badge -->
+                            <Border Grid.Column="5"
+                                    StrokeShape="RoundRectangle 4"
+                                    Stroke="Transparent"
+                                    Padding="6,2"
+                                    VerticalOptions="Center"
+                                    HorizontalOptions="Start">
+                                <Border.Triggers>
+                                    <DataTrigger TargetType="Border"
+                                                 Binding="{Binding Threat}"
+                                                 Value="High">
+                                        <Setter Property="BackgroundColor" Value="#FFF5F5"/>
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Border"
+                                                 Binding="{Binding Threat}"
+                                                 Value="Medium">
+                                        <Setter Property="BackgroundColor" Value="#FFFAF0"/>
+                                    </DataTrigger>
+                                    <DataTrigger TargetType="Border"
+                                                 Binding="{Binding Threat}"
+                                                 Value="Clean">
+                                        <Setter Property="BackgroundColor" Value="#F0FFF4"/>
+                                    </DataTrigger>
+                                </Border.Triggers>
+                                <Label Text="{Binding Threat}" FontSize="11">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label"
+                                                     Binding="{Binding Threat}"
+                                                     Value="High">
+                                            <Setter Property="TextColor" Value="#C53030"/>
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Label"
+                                                     Binding="{Binding Threat}"
+                                                     Value="Medium">
+                                            <Setter Property="TextColor" Value="#C05621"/>
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Label"
+                                                     Binding="{Binding Threat}"
+                                                     Value="Clean">
+                                            <Setter Property="TextColor" Value="#276749"/>
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Label"
+                                                     Binding="{Binding Threat}"
+                                                     Value="Unknown">
+                                            <Setter Property="TextColor" Value="#718096"/>
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </Border>
+
+                            <!-- Row separator -->
+                            <BoxView Grid.ColumnSpan="6" HeightRequest="1" VerticalOptions="End"
+                                     Color="{AppThemeBinding Light=#EDF2F7, Dark=#2D3748}"/>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+
+    </Grid>
+</ContentPage>
