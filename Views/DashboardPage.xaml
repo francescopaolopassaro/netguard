@@ -6,10 +6,6 @@
              x:Class="NetGuard.Views.DashboardPage"
              Title="Dashboard">
 
-    <ContentPage.BindingContext>
-        <vm:DashboardViewModel />
-    </ContentPage.BindingContext>
-
     <ScrollView>
         <VerticalStackLayout Padding="24" Spacing="20">
 
@@ -92,10 +88,21 @@
             </Grid>
 
             <!-- Recent Alerts -->
-            <Label Text="Recent Alerts" FontSize="18" FontAttributes="Bold"
+            <HorizontalStackLayout Spacing="12">
+                <Label Text="Recent Alerts" FontSize="18" FontAttributes="Bold"
                    TextColor="{AppThemeBinding Light=#1A202C, Dark=#F7FAFC}"/>
+                <Button Text="⬇  Export CSV" HorizontalOptions="EndAndExpand"
+                        BackgroundColor="Transparent"
+                        BorderColor="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                        TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"
+                        BorderWidth="1" CornerRadius="8" Padding="10,5" FontSize="12"
+                        Clicked="OnExportAlertsClicked"/>
+            </HorizontalStackLayout>
 
-            <CollectionView ItemsSource="{Binding RecentAlerts}"
+            <CollectionView x:Name="AlertList"
+                            ItemsSource="{Binding RecentAlerts}"
+                            SelectionMode="Single"
+                            SelectionChanged="OnAlertSelected"
                             EmptyView="No alerts — system is clean ✓"
                             HeightRequest="380">
                 <CollectionView.ItemTemplate>

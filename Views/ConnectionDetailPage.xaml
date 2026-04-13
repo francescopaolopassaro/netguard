@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="NetGuard.Views.ConnectionDetailPage"
+             Title="Connection Detail">
+
+    <Grid RowDefinitions="*,Auto">
+
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Padding="24" Spacing="16"
+                                 MaximumWidthRequest="720" HorizontalOptions="Start">
+
+                <!-- Header -->
+                <HorizontalStackLayout Spacing="14">
+                    <Label x:Name="ThreatIconLabel" FontSize="36" VerticalOptions="Center"/>
+                    <VerticalStackLayout VerticalOptions="Center" Spacing="3">
+                        <Label x:Name="DomainLabel" FontSize="20" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=#1A202C, Dark=#F7FAFC}"/>
+                        <Label x:Name="IpPortLabel" FontSize="13"
+                               TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                    </VerticalStackLayout>
+                    <Button Text="← Back" HorizontalOptions="EndAndExpand"
+                            BackgroundColor="Transparent"
+                            BorderColor="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                            TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"
+                            BorderWidth="1" CornerRadius="8" Padding="14,8"
+                            Clicked="OnBackClicked"/>
+                </HorizontalStackLayout>
+
+                <!-- Connection details -->
+                <Frame CornerRadius="10" Padding="20" HasShadow="False"
+                       BackgroundColor="{AppThemeBinding Light=#F7FAFC, Dark=#2D3748}">
+                    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                          ColumnDefinitions="140,*" RowSpacing="12">
+
+                        <Label Grid.Row="0" Grid.Column="0" Text="Protocol"
+                               FontSize="13" TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                        <Label Grid.Row="0" Grid.Column="1" x:Name="ProtocolLabel"
+                               FontSize="13" FontAttributes="Bold"
+                               TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+
+                        <Label Grid.Row="1" Grid.Column="0" Text="Remote address"
+                               FontSize="13" TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                        <Label Grid.Row="1" Grid.Column="1" x:Name="RemoteLabel"
+                               FontSize="13" FontFamily="Courier"
+                               TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+
+                        <Label Grid.Row="2" Grid.Column="0" Text="Port risk"
+                               FontSize="13" TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                        <VerticalStackLayout Grid.Row="2" Grid.Column="1" Spacing="2">
+                            <Label x:Name="PortRiskLabel" FontSize="13" FontAttributes="Bold"/>
+                            <Label x:Name="PortNoteLabel" FontSize="11"
+                                   TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                        </VerticalStackLayout>
+
+                        <Label Grid.Row="3" Grid.Column="0" Text="State"
+                               FontSize="13" TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                        <Label Grid.Row="3" Grid.Column="1" x:Name="StateLabel"
+                               FontSize="13"
+                               TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+
+                        <Label Grid.Row="4" Grid.Column="0" Text="Process"
+                               FontSize="13" TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                        <Label Grid.Row="4" Grid.Column="1" x:Name="ProcessLabel"
+                               FontSize="13"
+                               TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+                    </Grid>
+                </Frame>
+
+                <!-- Geolocation card -->
+                <Frame CornerRadius="10" Padding="20" HasShadow="False"
+                       BackgroundColor="{AppThemeBinding Light=#F7FAFC, Dark=#2D3748}"
+                       x:Name="GeoFrame">
+                    <VerticalStackLayout Spacing="10">
+                        <HorizontalStackLayout Spacing="8">
+                            <Label Text="🌍" FontSize="18"/>
+                            <Label Text="Geolocation" FontAttributes="Bold" FontSize="15"
+                                   TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"
+                                   VerticalOptions="Center"/>
+                            <ActivityIndicator x:Name="GeoSpinner" IsRunning="True"
+                                               Color="#3182CE" WidthRequest="18" HeightRequest="18"
+                                               VerticalOptions="Center"/>
+                        </HorizontalStackLayout>
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto"
+                              ColumnDefinitions="120,*" RowSpacing="8"
+                              x:Name="GeoGrid" IsVisible="False">
+                            <Label Grid.Row="0" Grid.Column="0" Text="Location" FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                            <Label Grid.Row="0" Grid.Column="1" x:Name="LocationLabel"
+                                   FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+
+                            <Label Grid.Row="1" Grid.Column="0" Text="ISP / Org" FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                            <Label Grid.Row="1" Grid.Column="1" x:Name="IspLabel"
+                                   FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+
+                            <Label Grid.Row="2" Grid.Column="0" Text="Proxy / VPN" FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                            <Label Grid.Row="2" Grid.Column="1" x:Name="ProxyLabel"
+                                   FontSize="13" FontAttributes="Bold"/>
+
+                            <Label Grid.Row="3" Grid.Column="0" Text="Hosting" FontSize="13"
+                                   TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                            <Label Grid.Row="3" Grid.Column="1" x:Name="HostingLabel"
+                                   FontSize="13"/>
+                        </Grid>
+                        <Label x:Name="GeoErrorLabel" IsVisible="False" FontSize="12"
+                               TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <!-- DNS check card -->
+                <Frame CornerRadius="10" Padding="20" HasShadow="False"
+                       BackgroundColor="{AppThemeBinding Light=#F7FAFC, Dark=#2D3748}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="🔒 DNS Reputation" FontAttributes="Bold" FontSize="15"
+                               TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+                        <Label x:Name="DnsResultLabel" FontSize="13" LineBreakMode="WordWrap"
+                               TextColor="{AppThemeBinding Light=#4A5568, Dark=#CBD5E0}"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Bottom action bar -->
+        <HorizontalStackLayout Grid.Row="1" Spacing="12" Padding="24,12"
+                               BackgroundColor="{AppThemeBinding Light=#F7FAFC, Dark=#2D3748}">
+            <Button Text="🔍 VirusTotal IP lookup"
+                    BackgroundColor="#3182CE" TextColor="White"
+                    CornerRadius="8" Padding="16,10"
+                    Clicked="OnVirusTotalClicked"/>
+            <Button Text="📋 Copy IP"
+                    BackgroundColor="Transparent"
+                    BorderColor="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                    TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"
+                    BorderWidth="1" CornerRadius="8" Padding="16,10"
+                    Clicked="OnCopyIpClicked"/>
+            <Button Text="⊕ Add to whitelist"
+                    BackgroundColor="#38A169" TextColor="White"
+                    CornerRadius="8" Padding="16,10"
+                    Clicked="OnWhitelistClicked"/>
+        </HorizontalStackLayout>
+
+    </Grid>
+</ContentPage>

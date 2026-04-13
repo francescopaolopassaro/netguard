@@ -10,22 +10,17 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-    <!-- App Metadata -->
+    <!-- App metadata -->
     <ApplicationTitle>NetGuard</ApplicationTitle>
     <ApplicationId>com.netguard.security</ApplicationId>
     <ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
 
-    <!-- Disable mobile/mac targets -->
+    <!-- Windows minimum version -->
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</SupportedOSPlatformVersion>
-
-    <!-- Desktop only -->
-    <_IsAndroid>false</_IsAndroid>
-    <_IsiOS>false</_IsiOS>
-    <_IsMacCatalyst>false</_IsMacCatalyst>
   </PropertyGroup>
 
-  <!-- Exclude mobile/mac platforms entirely -->
+  <!-- Remove unsupported platforms -->
   <ItemGroup>
     <SupportedPlatform Remove="android" />
     <SupportedPlatform Remove="ios" />
@@ -33,24 +28,45 @@
     <SupportedPlatform Remove="tizen" />
   </ItemGroup>
 
+  <!-- App icon and splash screen -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.Maui.Controls" Version="9.0.*" />
-    <PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="9.0.*" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
-    <PackageReference Include="CommunityToolkit.Maui" Version="9.*" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.*" />
-    <PackageReference Include="System.Net.Http.Json" Version="9.*" />
+    <MauiIcon Include="Resources\Images\appicon.svg"
+              ForegroundFile="Resources\Images\appicon.svg"
+              Color="#1A202C" />
+    <MauiSplashScreen Include="Resources\Images\splash.svg"
+                      Color="#1A202C"
+                      BaseSize="128,128" />
   </ItemGroup>
 
-  <!-- Windows-only packages -->
+  <!-- Images, fonts, raw assets -->
+  <ItemGroup>
+    <MauiImage Include="Resources\Images\*" />
+    <MauiFont  Include="Resources\Fonts\*" />
+    <MauiAsset Include="Resources\Raw\**"
+               LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- NuGet packages -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls"               Version="9.0.*" />
+    <PackageReference Include="Microsoft.Maui.Controls.Compatibility"  Version="9.0.*" />
+    <PackageReference Include="CommunityToolkit.Mvvm"                  Version="8.*"   />
+    <PackageReference Include="CommunityToolkit.Maui"                  Version="9.*"   />
+    <PackageReference Include="Microsoft.Data.Sqlite"                  Version="9.*"   />
+    <PackageReference Include="System.Net.Http.Json"                   Version="9.*"   />
+  </ItemGroup>
+
+  <!-- Windows-only: WMI -->
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('windows'))">
     <PackageReference Include="System.Management" Version="9.*" />
   </ItemGroup>
 
-  <ItemGroup>
-    <MauiImage Include="Resources\Images\*" />
-    <MauiFont Include="Resources\Fonts\*" />
-    <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  <!-- Exclude platform-specific source from the wrong target -->
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+    <Compile Remove="Platforms\Linux\**" />
+  </ItemGroup>
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'windows'">
+    <Compile Remove="Platforms\Windows\**" />
   </ItemGroup>
 
 </Project>

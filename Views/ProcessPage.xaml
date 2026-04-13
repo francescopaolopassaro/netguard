@@ -22,11 +22,17 @@
                     BackgroundColor="#3182CE" TextColor="White"
                     CornerRadius="8" Padding="12,7"
                     HorizontalOptions="EndAndExpand"/>
+            <Button Text="⬇  Export CSV"
+                    BackgroundColor="Transparent"
+                    BorderColor="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                    TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"
+                    BorderWidth="1" CornerRadius="8" Padding="12,7"
+                    Clicked="OnExportClicked"/>
         </HorizontalStackLayout>
 
         <!-- Progress bar -->
         <ProgressBar Grid.Row="1" Margin="20,0"
-                     Progress="{Binding ScannedCount}"
+                     Progress="{Binding ScanProgress}"
                      IsVisible="{Binding IsBusy}"
                      ProgressColor="#3182CE"/>
 
@@ -53,7 +59,10 @@
 
         <!-- Process list -->
         <CollectionView Grid.Row="3"
+                        x:Name="ProcessList"
                         ItemsSource="{Binding Processes}"
+                        SelectionMode="Single"
+                        SelectionChanged="OnProcessSelected"
                         EmptyView="No processes found — run a scan first">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="models:ProcessInfo">
@@ -113,10 +122,14 @@
                                            TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"
                                            LineBreakMode="MiddleTruncation"/>
                                     <Label Text="{Binding ThreatDetail}" FontSize="11"
-                                           IsVisible="{Binding IsScanned}"
-                                           TextColor="{AppThemeBinding Light=#C53030, Dark=#FC8181}"
-                                           IsVisible2="{Binding ThreatDetail,
-                                               Converter={StaticResource IsNotEmptyConverter}}"/>
+                                           TextColor="{AppThemeBinding Light=#C53030, Dark=#FC8181}">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label"
+                                                         Binding="{Binding IsScanned}" Value="False">
+                                                <Setter Property="IsVisible" Value="False"/>
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
                                 </VerticalStackLayout>
 
                                 <!-- PID -->

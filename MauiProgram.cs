@@ -17,35 +17,47 @@ public static class MauiProgram
             .UseMauiCommunityToolkit()
             .ConfigureFonts(fonts =>
             {
-                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
-                fonts.AddFont("OpenSans-SemiBold.ttf", "OpenSansSemiBold");
+                fonts.AddFont("OpenSans-Regular.ttf",   "OpenSansRegular");
+                fonts.AddFont("OpenSans-SemiBold.ttf",  "OpenSansSemiBold");
             });
 
-        // ── Services (Singleton — shared state) ───────────────
+        // ── Core Services (Singleton) ─────────────────────────
         builder.Services.AddSingleton<DatabaseService>();
         builder.Services.AddSingleton<WhitelistEngine>();
         builder.Services.AddSingleton<NetworkMonitorService>();
         builder.Services.AddSingleton<ProcessScannerService>();
+        builder.Services.AddSingleton<IpLookupService>();
+        builder.Services.AddSingleton<ExportService>();
+
         builder.Services.AddSingleton<DnsCheckerService>(sp =>
         {
             var db       = sp.GetRequiredService<DatabaseService>();
             var settings = db.LoadSettingsAsync().GetAwaiter().GetResult();
             return new DnsCheckerService(settings);
         });
+
         builder.Services.AddSingleton<ThreatIntelService>(sp =>
         {
             var db       = sp.GetRequiredService<DatabaseService>();
             var settings = db.LoadSettingsAsync().GetAwaiter().GetResult();
             return new ThreatIntelService(db, settings);
         });
+
+        builder.Services.AddSingleton<NotificationService>(sp =>
+        {
+            var db       = sp.GetRequiredService<DatabaseService>();
+            var settings = db.LoadSettingsAsync().GetAwaiter().GetResult();
+            return new NotificationService(db, settings);
+        });
+
         builder.Services.AddSingleton<ThreatAnalysisPipeline>();
 
-        // ── ViewModels ────────────────────────────────────────
+        // ── ViewModels (Transient — fresh per page visit) ─────
         builder.Services.AddTransient<DashboardViewModel>();
         builder.Services.AddTransient<NetworkViewModel>();
         builder.Services.AddTransient<ProcessViewModel>();
         builder.Services.AddTransient<RulesViewModel>();
-        builder.Services.AddTransient<SettingsViewModel>();
+        builder.Services.AddTransient<SettingsViewModel>(); // DI auto-resolves all 4 ctor params
 
         // ── Pages ─────────────────────────────────────────────
         builder.Services.AddTransient<DashboardPage>();
@@ -53,6 +65,9 @@ public static class MauiProgram
         builder.Services.AddTransient<ProcessPage>();
         builder.Services.AddTransient<RulesPage>();
         builder.Services.AddTransient<SettingsPage>();
+        builder.Services.AddTransient<AlertDetailPage>();
+        builder.Services.AddTransient<ProcessDetailPage>();
+        builder.Services.AddTransient<ConnectionDetailPage>();
 
 #if DEBUG
         builder.Logging.AddDebug();
@@ -61,3 +76,4 @@ public static class MauiProgram
         return builder.Build();
     }
 }
+

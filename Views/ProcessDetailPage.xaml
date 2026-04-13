@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="NetGuard.Views.ProcessDetailPage"
+             Title="Process Detail">
+
+    <ContentPage.Resources>
+        <Style x:Key="FieldLabel" TargetType="Label">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="TextColor"
+                    Value="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+            <Setter Property="VerticalOptions" Value="Center"/>
+        </Style>
+        <Style x:Key="FieldValue" TargetType="Label">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="TextColor"
+                    Value="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+            <Setter Property="VerticalOptions" Value="Center"/>
+        </Style>
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="16"
+                             MaximumWidthRequest="740" HorizontalOptions="Start">
+
+            <!-- Header -->
+            <HorizontalStackLayout Spacing="14">
+                <Label x:Name="ThreatIconLabel" FontSize="36" VerticalOptions="Center"/>
+                <VerticalStackLayout VerticalOptions="Center" Spacing="3">
+                    <Label x:Name="NameLabel" FontSize="22" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=#1A202C, Dark=#F7FAFC}"/>
+                    <Label x:Name="ThreatBadgeLabel" FontSize="13" FontAttributes="Bold"/>
+                </VerticalStackLayout>
+                <Button Text="← Back" HorizontalOptions="EndAndExpand"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"
+                        BorderColor="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                        BorderWidth="1" CornerRadius="8" Padding="14,8"
+                        Clicked="OnBackClicked"/>
+            </HorizontalStackLayout>
+
+            <!-- Process Info -->
+            <Frame CornerRadius="10" Padding="20" HasShadow="False"
+                   BackgroundColor="{AppThemeBinding Light=#F7FAFC, Dark=#2D3748}">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                      ColumnDefinitions="140,*" RowSpacing="12">
+
+                    <Label Grid.Row="0" Grid.Column="0" Text="PID" Style="{StaticResource FieldLabel}"/>
+                    <Label Grid.Row="0" Grid.Column="1" x:Name="PidLabel" Style="{StaticResource FieldValue}"/>
+
+                    <Label Grid.Row="1" Grid.Column="0" Text="Executable path" Style="{StaticResource FieldLabel}"/>
+                    <Label Grid.Row="1" Grid.Column="1" x:Name="PathLabel" Style="{StaticResource FieldValue}"
+                           LineBreakMode="MiddleTruncation"/>
+
+                    <Label Grid.Row="2" Grid.Column="0" Text="SHA-256 hash" Style="{StaticResource FieldLabel}"/>
+                    <Label Grid.Row="2" Grid.Column="1" x:Name="HashLabel"
+                           FontFamily="Courier" FontSize="12"
+                           TextColor="{AppThemeBinding Light=#4A5568, Dark=#CBD5E0}"
+                           LineBreakMode="CharacterWrap"/>
+
+                    <Label Grid.Row="3" Grid.Column="0" Text="Digital signature" Style="{StaticResource FieldLabel}"/>
+                    <HorizontalStackLayout Grid.Row="3" Grid.Column="1" Spacing="8">
+                        <Label x:Name="SignedLabel" Style="{StaticResource FieldValue}"/>
+                        <Label x:Name="PublisherLabel" FontSize="12"
+                               TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                    </HorizontalStackLayout>
+
+                    <Label Grid.Row="4" Grid.Column="0" Text="Memory (RSS)" Style="{StaticResource FieldLabel}"/>
+                    <Label Grid.Row="4" Grid.Column="1" x:Name="MemLabel" Style="{StaticResource FieldValue}"/>
+
+                    <Label Grid.Row="5" Grid.Column="0" Text="Start time" Style="{StaticResource FieldLabel}"/>
+                    <Label Grid.Row="5" Grid.Column="1" x:Name="StartLabel" Style="{StaticResource FieldValue}"/>
+
+                    <Label Grid.Row="6" Grid.Column="0" Text="Scan result" Style="{StaticResource FieldLabel}"/>
+                    <Label Grid.Row="6" Grid.Column="1" x:Name="ScanResultLabel"
+                           FontSize="13" FontAttributes="Bold" LineBreakMode="WordWrap"/>
+                </Grid>
+            </Frame>
+
+            <!-- Threat Detail Card (only when threat found) -->
+            <Frame x:Name="ThreatDetailFrame" CornerRadius="10" Padding="20" HasShadow="False"
+                   IsVisible="False"
+                   BackgroundColor="{AppThemeBinding Light=#FFF5F5, Dark=#3D2020}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="⚠ Threat Intelligence Results" FontAttributes="Bold" FontSize="15"
+                           TextColor="{AppThemeBinding Light=#C53030, Dark=#FC8181}"/>
+                    <Label x:Name="ThreatDetailTextLabel" FontSize="13" LineBreakMode="WordWrap"
+                           TextColor="{AppThemeBinding Light=#742A2A, Dark=#FEB2B2}"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Actions -->
+            <HorizontalStackLayout Spacing="12" Wrap="Wrap">
+                <Button Text="🔍 VirusTotal lookup"
+                        BackgroundColor="#3182CE" TextColor="White"
+                        CornerRadius="8" Padding="16,10"
+                        Clicked="OnVirusTotalClicked"/>
+                <Button Text="📋 Copy hash"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"
+                        BorderColor="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                        BorderWidth="1" CornerRadius="8" Padding="16,10"
+                        Clicked="OnCopyHashClicked"/>
+                <Button x:Name="KillButton"
+                        Text="⛔ Kill process"
+                        BackgroundColor="#E53E3E" TextColor="White"
+                        CornerRadius="8" Padding="16,10"
+                        IsVisible="False"
+                        Clicked="OnKillClicked"/>
+            </HorizontalStackLayout>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:NetGuard.Models"
+             x:Class="NetGuard.Views.AlertDetailPage"
+             Title="Alert Detail">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="16"
+                             MaximumWidthRequest="680" HorizontalOptions="Start">
+
+            <!-- Severity Banner -->
+            <Frame CornerRadius="12" Padding="20,14" HasShadow="False"
+                   x:Name="SeverityBanner">
+                <HorizontalStackLayout Spacing="14">
+                    <Label x:Name="IconLabel"  FontSize="32" VerticalOptions="Center"/>
+                    <VerticalStackLayout VerticalOptions="Center" Spacing="4">
+                        <Label x:Name="TitleLabel" FontSize="20" FontAttributes="Bold"
+                               TextColor="White"/>
+                        <Label x:Name="SeverityLabel" FontSize="13" TextColor="White"
+                               Opacity="0.85"/>
+                    </VerticalStackLayout>
+                </HorizontalStackLayout>
+            </Frame>
+
+            <!-- Details Card -->
+            <Frame CornerRadius="10" Padding="20" HasShadow="False"
+                   BackgroundColor="{AppThemeBinding Light=#F7FAFC, Dark=#2D3748}">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="14"
+                      ColumnDefinitions="120,*">
+
+                    <Label Grid.Row="0" Grid.Column="0" Text="Type"
+                           FontSize="13" TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                    <Label Grid.Row="0" Grid.Column="1" x:Name="TypeLabel"
+                           FontSize="13" FontAttributes="Bold"
+                           TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+
+                    <Label Grid.Row="1" Grid.Column="0" Text="Source"
+                           FontSize="13" TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                    <Label Grid.Row="1" Grid.Column="1" x:Name="SourceLabel"
+                           FontSize="13" FontFamily="Courier"
+                           TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+
+                    <Label Grid.Row="2" Grid.Column="0" Text="Detail"
+                           FontSize="13" TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                    <Label Grid.Row="2" Grid.Column="1" x:Name="DetailLabel"
+                           FontSize="13" LineBreakMode="WordWrap"
+                           TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+
+                    <Label Grid.Row="3" Grid.Column="0" Text="Detected"
+                           FontSize="13" TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                    <Label Grid.Row="3" Grid.Column="1" x:Name="TimeLabel"
+                           FontSize="13"
+                           TextColor="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
+
+                    <BoxView Grid.Row="4" Grid.ColumnSpan="2" HeightRequest="1"
+                             Color="{AppThemeBinding Light=#E2E8F0, Dark=#4A5568}"/>
+
+                    <Label Grid.Row="5" Grid.Column="0" Text="Severity"
+                           FontSize="13" TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"/>
+                    <Label Grid.Row="5" Grid.Column="1" x:Name="SeverityDetailLabel"
+                           FontSize="13" FontAttributes="Bold"/>
+                </Grid>
+            </Frame>
+
+            <!-- Recommended Actions -->
+            <Frame CornerRadius="10" Padding="20" HasShadow="False"
+                   BackgroundColor="{AppThemeBinding Light=#FFF5F5, Dark=#3D2020}"
+                   x:Name="ActionsFrame" IsVisible="False">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="⚡ Recommended Actions" FontAttributes="Bold" FontSize="15"
+                           TextColor="{AppThemeBinding Light=#C53030, Dark=#FC8181}"/>
+                    <Label x:Name="ActionsLabel" FontSize="13" LineBreakMode="WordWrap"
+                           TextColor="{AppThemeBinding Light=#742A2A, Dark=#FEB2B2}"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Action Buttons -->
+            <HorizontalStackLayout Spacing="12">
+                <Button Text="🔍 Lookup on VirusTotal"
+                        x:Name="VtButton"
+                        BackgroundColor="#3182CE" TextColor="White"
+                        CornerRadius="8" Padding="16,10"
+                        Clicked="OnVirusTotalClicked"/>
+                <Button Text="✓ Mark as Read"
+                        x:Name="MarkReadButton"
+                        BackgroundColor="#38A169" TextColor="White"
+                        CornerRadius="8" Padding="16,10"
+                        Clicked="OnMarkReadClicked"/>
+                <Button Text="← Back"
+                        BackgroundColor="Transparent"
+                        TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"
+                        BorderColor="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
+                        BorderWidth="1"
+                        CornerRadius="8" Padding="16,10"
+                        Clicked="OnBackClicked"/>
+            </HorizontalStackLayout>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

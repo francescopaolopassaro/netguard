@@ -24,7 +24,7 @@ public abstract partial class BaseViewModel : ObservableObject
 // ─────────────────────────────────────────────────────────────
 //  Dashboard
 // ─────────────────────────────────────────────────────────────
-public partial class DashboardViewModel : BaseViewModel
+public partial class DashboardViewModel : BaseViewModel, IDisposable
 {
     private readonly ThreatAnalysisPipeline _pipeline;
     private readonly DatabaseService        _db;
@@ -192,6 +192,11 @@ public partial class ProcessViewModel : BaseViewModel
     [ObservableProperty] private int    _scannedCount;
     [ObservableProperty] private int    _totalCount;
 
+    public double ScanProgress => TotalCount == 0 ? 0 : (double)ScannedCount / TotalCount;
+
+    partial void OnScannedCountChanged(int value) => OnPropertyChanged(nameof(ScanProgress));
+    partial void OnTotalCountChanged(int value)   => OnPropertyChanged(nameof(ScanProgress));
+
     public ObservableCollection<ProcessInfo> Processes { get; } = new();
     private List<ProcessInfo> _all = new();
 
@@ -327,7 +332,10 @@ public partial class RulesViewModel : BaseViewModel
 // ─────────────────────────────────────────────────────────────
 public partial class SettingsViewModel : BaseViewModel
 {
-    private readonly DatabaseService _db;
+    private readonly DatabaseService    _db;
+    private readonly ThreatIntelService _intel;
+    private readonly DnsCheckerService  _dns;
+    private readonly NotificationService _notify;
 
     [ObservableProperty] private string _virusTotalApiKey  = "";
     [ObservableProperty] private string _abuseIpDbApiKey   = "";
@@ -337,7 +345,17 @@ public partial class SettingsViewModel : BaseViewModel
     [ObservableProperty] private int    _scanInterval      = 30;
     [ObservableProperty] private bool   _notifyOnThreat    = true;
 
-    public SettingsViewModel(DatabaseService db) => _db = db;
+    public SettingsViewModel(
+        DatabaseService    db,
+        ThreatIntelService intel,
+        DnsCheckerService  dns,
+        NotificationService notify)
+    {
+        _db     = db;
+        _intel  = intel;
+        _dns    = dns;
+        _notify = notify;
+    }
 
     [RelayCommand]
     public async Task LoadAsync()
@@ -358,7 +376,7 @@ public partial class SettingsViewModel : BaseViewModel
         SetBusy(true, "Saving…");
         try
         {
-            await _db.SaveSettingsAsync(new AppSettings
+            var s = new AppSettings
             {
                 VirusTotalApiKey  = VirusTotalApiKey,
                 AbuseIpDbApiKey   = AbuseIpDbApiKey,
@@ -367,8 +385,14 @@ public partial class SettingsViewModel : BaseViewModel
                 UseDnsOverHttps   = UseDoh,
                 ScanIntervalSec   = ScanInterval,
                 NotifyOnThreat    = NotifyOnThreat
-            });
-            StatusMessage = "Settings saved.";
+            };
+            await _db.SaveSettingsAsync(s);
+
+            // Propagate to live services — no restart needed
+            _intel.UpdateSettings(s);
+            _notify.UpdateSettings(s);
+
+            StatusMessage = "✅ Settings saved";
         }
         finally { SetBusy(false); }
     }
