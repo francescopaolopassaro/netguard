@@ -1,8 +1,9 @@
+using NetGuard.Models;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
-using NetGuard.Models;
 
 namespace NetGuard.Services;
 
@@ -95,7 +96,7 @@ public class ProcessScannerService
         try
         {
             // System.Security.Cryptography.X509Certificates approach
-            var cert = System.Security.Cryptography.X509Certificates.X509Certificate.CreateFromSignedFile(path);
+            var cert = X509CertificateLoader.LoadCertificateFromFile(path);
             return (true, cert.Subject);
         }
         catch { return (false, ""); }

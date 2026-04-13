@@ -89,8 +89,8 @@
                 </VerticalStackLayout>
             </Frame>
 
-            <!-- Actions -->
-            <HorizontalStackLayout Spacing="12" Wrap="Wrap">
+            <!-- Actions   Wrap="Wrap"-->
+            <HorizontalStackLayout Spacing="12" >
                 <Button Text="🔍 VirusTotal lookup"
                         BackgroundColor="#3182CE" TextColor="White"
                         CornerRadius="8" Padding="16,10"

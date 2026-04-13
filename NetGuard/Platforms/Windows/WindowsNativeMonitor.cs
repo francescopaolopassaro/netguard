@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Management;
 using System.Runtime.Versioning;
+using System.Security.Cryptography.X509Certificates;
 
 namespace NetGuard.Platforms.Windows;
 
@@ -115,7 +116,7 @@ public class WindowsNativeMonitor : IDisposable
     {
         try
         {
-            var cert = new System.Security.Cryptography.X509Certificates.X509Certificate2(filePath);
+            var cert = X509CertificateLoader.LoadCertificateFromFile(filePath);
             return (true, cert.Subject, cert.Issuer);
         }
         catch

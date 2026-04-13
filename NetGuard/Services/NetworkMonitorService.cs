@@ -167,10 +167,10 @@ public class NetworkMonitorService
         return new NetworkConnection
         {
             Protocol      = proto,
-            LocalAddress  = local.Value.Address.ToString(),
-            LocalPort     = local.Value.Port,
-            RemoteAddress = remote.Value.Address.ToString(),
-            RemotePort    = remote.Value.Port,
+            LocalAddress  = local.Address.ToString(),
+            LocalPort     = local.Port,
+            RemoteAddress = remote.Address.ToString(),
+            RemotePort    = remote.Port,
             State         = state,
             ProcessId     = proc.Pid,
             ProcessName   = proc.Name ?? ""

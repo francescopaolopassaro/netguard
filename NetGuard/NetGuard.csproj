@@ -1,0 +1,87 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+<PropertyGroup>
+    <TargetFrameworks>net9.0-windows10.0.19041.0</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net9.0</TargetFrameworks>
+
+    <OutputType>Exe</OutputType>
+    <RootNamespace>NetGuard</RootNamespace>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <ApplicationTitle>NetGuard</ApplicationTitle>
+    <ApplicationId>com.netguard.security</ApplicationId>
+    <ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.19041.0</SupportedOSPlatformVersion>
+    <WindowsPackageType Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">None</WindowsPackageType>
+</PropertyGroup>
+  <ItemGroup>
+    <SupportedPlatform Remove="android" />
+    <SupportedPlatform Remove="ios" />
+    <SupportedPlatform Remove="maccatalyst" />
+    <SupportedPlatform Remove="tizen" />
+  </ItemGroup>
+
+  <!-- App icon and splash -->
+<ItemGroup>
+    <!-- App Icon (solo questo deve usare MauiIcon) -->
+
+    <!-- Splash Screen -->
+    <MauiSplashScreen Include="Resources\Images\splash.svg" Color="#1A202C" BaseSize="128,128" />
+
+    <!-- Tutte le altre immagini (escludi esplicitamente icon e splash) -->
+    <MauiImage Include="Resources\Images\*" Exclude="Resources\Images\appicon.svg;Resources\Images\splash.svg" />
+</ItemGroup>
+
+  <!-- Images, fonts, raw assets -->
+  <ItemGroup>
+    <MauiImage Include="Resources\Images\*" />
+    <MauiFont Include="Resources\Fonts\*" />
+    <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <MauiImage Remove="Resources\Images\appicon.svg" />
+  </ItemGroup>
+  <ItemGroup>
+    <MauiIcon Include="Resources\Images\appicon.svg" />
+  </ItemGroup>
+
+  <!-- NuGet packages (all targets) -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="9.0.*" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
+    <PackageReference Include="CommunityToolkit.Maui" Version="9.*" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.*" />
+    <PackageReference Include="System.Net.Http.Json" Version="9.*" />
+	<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.*" />
+  </ItemGroup>
+
+  <!-- Windows-only packages -->
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+    <PackageReference Include="System.Management" Version="9.*" />
+  </ItemGroup>
+
+  <!-- Exclude Linux platform source from Windows build -->
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+    <Compile Remove="Platforms\Linux\**" />
+    <MauiXaml Remove="Platforms\Linux\**" />
+    <None Remove="Platforms\Linux\**" />
+  </ItemGroup>
+
+  <!-- Exclude Windows platform source from Linux build -->
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'windows'">
+    <Compile Remove="Platforms\Windows\**" />
+    <MauiXaml Remove="Platforms\Windows\**" />
+    <None Remove="Platforms\Windows\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Resources\Images\appicon.svg" Color="#1A202C" />
+  </ItemGroup>
+
+</Project>
