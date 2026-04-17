@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging;
 using NetGuard.Services;
 using NetGuard.ViewModels;
 using NetGuard.Views;
+using NetGuard.Models;
+using System.Threading.Tasks;
 
 namespace NetGuard;
 
@@ -28,6 +30,35 @@ public static class MauiProgram
         // ==================== CORE SERVICES ====================
         builder.Services.AddSingleton<DatabaseService>();
 
+        // Register AppSettings early with defaults; update asynchronously from DB to avoid blocking DI
+        builder.Services.AddSingleton<AppSettings>(sp =>
+        {
+            var settings = new AppSettings();
+            var db = sp.GetRequiredService<DatabaseService>();
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var loaded = await db.LoadSettingsAsync();
+                    // Copy loaded values into the singleton instance
+                    settings.VirusTotalApiKey   = loaded.VirusTotalApiKey;
+                    settings.AbuseIpDbApiKey    = loaded.AbuseIpDbApiKey;
+                    settings.AutoBlockProcesses= loaded.AutoBlockProcesses;
+                    settings.AutoBlockDomains  = loaded.AutoBlockDomains;
+                    settings.AutoBlockIps      = loaded.AutoBlockIps;
+                    settings.ScanIntervalSec   = loaded.ScanIntervalSec;
+                    settings.NotifyOnThreat    = loaded.NotifyOnThreat;
+                    settings.PrimaryDnsServer  = loaded.PrimaryDnsServer;
+                    settings.FallbackDnsServer = loaded.FallbackDnsServer;
+                    settings.UseDnsOverHttps   = loaded.UseDnsOverHttps;
+                    settings.DarkMode          = loaded.DarkMode;
+                    settings.BlockThreshold    = loaded.BlockThreshold;
+                }
+                catch { /* ignore loading errors */ }
+            });
+            return settings;
+        });
+
         builder.Services.AddSingleton<WhitelistService>();           // ← Richiesto da MonitoringEngine
         builder.Services.AddSingleton<WhitelistEngine>();            // ← Usato altrove (Pipeline)
 
@@ -41,20 +72,41 @@ public static class MauiProgram
         builder.Services.AddSingleton<ExportService>();
         builder.Services.AddSingleton<NotificationService>();
 
-        // ThreatService (usato da MonitoringEngine)
+        // ThreatService: non bloccare la registrazione con GetAwaiter().GetResult();
         builder.Services.AddSingleton<ThreatService>(sp =>
         {
+            // Costruiamo il servizio con impostazioni di default and update in background
             var db = sp.GetRequiredService<DatabaseService>();
-            var settings = db.LoadSettingsAsync().GetAwaiter().GetResult();
-            return new ThreatService(settings);
+            var appSettings = sp.GetRequiredService<AppSettings>();
+            var svc = new ThreatService(appSettings);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var settings = await db.LoadSettingsAsync();
+                    svc.UpdateConfig(settings);
+                }
+                catch { /* ignore */ }
+            });
+            return svc;
         });
 
-        // ThreatIntelService (nuovo)
+        // ThreatIntelService: costruito senza bloccare; aggiorniamo le impostazioni in background
         builder.Services.AddSingleton<ThreatIntelService>(sp =>
         {
             var db = sp.GetRequiredService<DatabaseService>();
-            var settings = db.LoadSettingsAsync().GetAwaiter().GetResult();
-            return new ThreatIntelService(db, settings);
+            var appSettings = sp.GetRequiredService<AppSettings>();
+            var svc = new ThreatIntelService(db, appSettings);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var settings = await db.LoadSettingsAsync();
+                    svc.UpdateSettings(settings);
+                }
+                catch { /* ignore */ }
+            });
+            return svc;
         });
 
         // ThreatAnalysisPipeline
@@ -91,8 +143,9 @@ public static class MauiProgram
         builder.Services.AddTransient<ConnectionDetailPage>();
         builder.Services.AddTransient<AlertDetailPage>();
 
-        // Application
-        builder.Services.AddSingleton<App>();
+        // ==================== APP ====================
+        // IMPORTANTE: NON registriamo l'App qui! La piattaforma crea l'istanza
+        // builder.Services.AddSingleton<App>();  ← RIMOSSO
 
         return builder.Build();
     }

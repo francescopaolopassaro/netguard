@@ -20,6 +20,31 @@ public partial class ProcessPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+
+        // If the app is not elevated, prompt the user to restart elevated for full process access
+        try
+        {
+            if (!ElevationService.IsElevated)
+            {
+                var wantElevate = await DisplayAlert(
+                    "Administrator privileges required",
+                    "Full process enumeration and blocking require Administrator rights. Restart elevated now?",
+                    "Restart as admin",
+                    "Continue without elevation");
+
+                if (wantElevate)
+                {
+                    // This will relaunch the app elevated and exit the current process
+                    ElevationService.RestartElevated();
+                    return; // process will exit, but keep return for safety
+                }
+            }
+        }
+        catch
+        {
+            // Ignore elevation check failures and continue with scan attempt
+        }
+
         await _vm.ScanCommand.ExecuteAsync(null);
     }
 

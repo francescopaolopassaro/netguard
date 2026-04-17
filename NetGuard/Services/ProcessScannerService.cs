@@ -15,69 +15,141 @@ namespace NetGuard.Services;
 public class ProcessScannerService
 {
     private readonly Dictionary<string, string> _hashCache = new();
+    private readonly SemaphoreSlim _semaphore = new(Math.Max(2, Environment.ProcessorCount));
 
     // ── Public API ────────────────────────────────────────────
 
-    public async Task<List<ProcessInfo>> GetProcessesAsync()
+    public async Task<List<ProcessInfo>> GetProcessesAsync(CancellationToken cancellationToken = default)
     {
         var result = new List<ProcessInfo>();
-        var procs  = Process.GetProcesses();
 
-        var tasks = procs.Select(async p =>
+        Process[] procs;
+        try
         {
-            try
+            procs = Process.GetProcesses();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"GetProcesses failed: {ex}");
+            return result;
+        }
+
+        var tasks = new List<Task<ProcessInfo?>>();
+
+        foreach (var p in procs)
+        {
+            // Capture p for closure
+            var proc = p;
+            tasks.Add(Task.Run(async () =>
             {
-                var info = await BuildProcessInfoAsync(p);
-                return info;
-            }
-            catch { return null; }
-            finally { p.Dispose(); }
-        });
+                try
+                {
+                    await _semaphore.WaitAsync(cancellationToken);
+                    if (cancellationToken.IsCancellationRequested) return null;
+                    return await BuildProcessInfoSafeAsync(proc, cancellationToken);
+                }
+                catch (OperationCanceledException) { return null; }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error scanning process {proc.Id}: {ex}");
+                    return null;
+                }
+                finally
+                {
+                    try { _semaphore.Release(); } catch { }
+                    try { proc.Dispose(); } catch { }
+                }
+            }, cancellationToken));
+        }
 
         var infos = await Task.WhenAll(tasks);
-        result.AddRange(infos.Where(i => i != null)!);
+        result.AddRange(infos.Where(i => i != null)!.Cast<ProcessInfo>());
         return result.OrderBy(p => p.Name).ToList();
     }
 
-    public async Task<string> ComputeHashAsync(string path)
+    public async Task<string> ComputeHashAsync(string path, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrEmpty(path)) return "";
         if (_hashCache.TryGetValue(path, out var cached)) return cached;
         try
         {
-            await using var fs   = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            using var sha        = SHA256.Create();
-            var hashBytes        = await Task.Run(() => sha.ComputeHash(fs));
-            var hash             = Convert.ToHexString(hashBytes).ToLowerInvariant();
-            _hashCache[path]     = hash;
+            await using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var sha = SHA256.Create();
+            // Compute hash on thread pool to avoid blocking caller thread
+            var hashBytes = await Task.Run(() => sha.ComputeHash(fs), cancellationToken);
+            var hash = Convert.ToHexString(hashBytes).ToLowerInvariant();
+            _hashCache[path] = hash;
             return hash;
         }
-        catch { return ""; }
+        catch (OperationCanceledException) { return ""; }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"ComputeHash failed for '{path}': {ex.Message}");
+            return "";
+        }
     }
 
-    // ── Private ───────────────────────────────────────────────
+    // ── Private ───────────────────────────────────────────────────────
 
-    private async Task<ProcessInfo> BuildProcessInfoAsync(Process p)
+    private async Task<ProcessInfo?> BuildProcessInfoSafeAsync(Process p, CancellationToken cancellationToken)
     {
         var info = new ProcessInfo
         {
-            Pid       = p.Id,
-            Name      = p.ProcessName,
-            StartTime = TryGetStartTime(p)
+            Pid = p.Id,
+            Name = string.Empty,
+            StartTime = DateTime.MinValue
         };
 
         try
         {
-            info.Path     = p.MainModule?.FileName ?? "";
-            info.MemoryKb = p.WorkingSet64 / 1024;
+            info.Name = p.ProcessName;
         }
-        catch { /* Access denied on some system processes */ }
+        catch { info.Name = "<unknown>"; }
+
+        try { info.StartTime = TryGetStartTime(p); } catch { info.StartTime = DateTime.MinValue; }
+
+        try
+        {
+            try
+            {
+                info.Path = p.MainModule?.FileName ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+                // Access denied or process exited
+                Debug.WriteLine($"Could not read MainModule for pid {p.Id}: {ex.Message}");
+                info.Path = string.Empty;
+            }
+
+            try
+            {
+                info.MemoryKb = p.WorkingSet64 / 1024;
+            }
+            catch { info.MemoryKb = 0; }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error reading basic info for pid {p.Id}: {ex.Message}");
+        }
 
         if (!string.IsNullOrEmpty(info.Path))
         {
-            info.Hash = await ComputeHashAsync(info.Path);
+            // Compute hash with cancellation support
+            info.Hash = await ComputeHashAsync(info.Path, cancellationToken);
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                (info.IsSigned, info.Publisher) = GetWindowsSignatureInfo(info.Path);
+            {
+                try
+                {
+                    (info.IsSigned, info.Publisher) = GetWindowsSignatureInfo(info.Path);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"GetWindowsSignatureInfo failed for '{info.Path}': {ex.Message}");
+                    info.IsSigned = false;
+                    info.Publisher = string.Empty;
+                }
+            }
         }
 
         return info;

@@ -106,13 +106,35 @@ public class ThreatService
             var resp  = await _http.GetAsync(url);
             if (!resp.IsSuccessStatusCode) return (false, "");
 
-            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
-            var status    = doc.RootElement.GetProperty("Status").GetInt32();
+            var text = await resp.Content.ReadAsStringAsync();
+            if (string.IsNullOrWhiteSpace(text)) return (false, "Empty response from DoH");
 
-            if (status == 3) // NXDOMAIN — Quad9 blocked it
+            using var doc = JsonDocument.Parse(text);
+            var root = doc.RootElement;
+
+            // Try several common shapes: "Status" (capital), "status" (lowercase), or presence of "Answer" array.
+            int? status = null;
+            if (root.TryGetProperty("Status", out var st1) && st1.ValueKind == JsonValueKind.Number)
+                status = st1.GetInt32();
+            else if (root.TryGetProperty("status", out var st2) && st2.ValueKind == JsonValueKind.Number)
+                status = st2.GetInt32();
+            else if (root.TryGetProperty("Answer", out var ans) || root.TryGetProperty("answer", out ans))
+            {
+                // If there's an Answer array, assume the query returned results -> not blocked
+                return (false, "Clean (has Answer)");
+            }
+
+            if (!status.HasValue)
+                return (false, "Unexpected DoH response format");
+
+            if (status.Value == 3) // NXDOMAIN — Quad9 blocked it
                 return (true, $"Blocked by Quad9 malware-filtering DNS (NXDOMAIN)");
 
-            return (false, $"Clean on Quad9 (status={status})");
+            return (false, $"Clean on Quad9 (status={status.Value})");
+        }
+        catch (JsonException jex)
+        {
+            return (false, $"JSON parse error: {jex.Message}");
         }
         catch (Exception ex) { return (false, ex.Message); }
     }

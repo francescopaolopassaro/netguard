@@ -118,6 +118,30 @@ public class DatabaseService
         );
         """);
 
+        // Ensure alerts table has expected columns (migrate older DBs)
+        try
+        {
+            using var checkCmd = conn.CreateCommand();
+            checkCmd.CommandText = "PRAGMA table_info('alerts');";
+            using var reader = checkCmd.ExecuteReader();
+            var cols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            while (reader.Read())
+            {
+                cols.Add(reader.GetString(1)); // name column
+            }
+
+            if (!cols.Contains("was_blocked"))
+            {
+                using var alter = conn.CreateCommand();
+                alter.CommandText = "ALTER TABLE alerts ADD COLUMN was_blocked INTEGER DEFAULT 0;";
+                alter.ExecuteNonQuery();
+            }
+        }
+        catch
+        {
+            // Ignore migration failures to avoid breaking startup; older DBs without column will still work for writes
+        }
+
         // Seed defaults se la tabella whitelist è vuota
         using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT COUNT(*) FROM whitelist";
@@ -133,6 +157,7 @@ public class DatabaseService
             InsertDefaultSettings(conn);
         }
     }
+
     private static void InsertDefaultSettings(SqliteConnection conn)
     {
         var defaults = new[]
@@ -159,6 +184,7 @@ public class DatabaseService
             cmd.ExecuteNonQuery();
         }
     }
+
     // ── Whitelist CRUD ────────────────────────────────────────────────────
 
     public async Task<List<WhitelistRule>> GetRulesAsync()
@@ -229,7 +255,7 @@ public class DatabaseService
         });
     }
 
-    // ── Alerts ────────────────────────────────────────────────────────────
+    // ── Alerts ───────────────────────────────────────────────────────────
 
     public async Task SaveAlertAsync(ThreatAlert a)
     {
@@ -272,7 +298,7 @@ public class DatabaseService
                     Source     = r.IsDBNull(5) ? "" : r.GetString(5),
                     At         = DateTime.Parse(r.GetString(6)),
                     IsRead     = r.GetInt32(7) == 1,
-                    WasBlocked = r.GetInt32(8) == 1
+                    WasBlocked = r.FieldCount > 8 && !r.IsDBNull(8) ? r.GetInt32(8) == 1 : false
                 });
             return list;
         });
