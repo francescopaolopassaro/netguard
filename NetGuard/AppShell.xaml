@@ -39,4 +39,6 @@
         <ShellContent ContentTemplate="{DataTemplate views:SettingsPage}" />
     </FlyoutItem>
 
+    <MenuItem Text="About" IconImageSource="info.png" Command="{Binding Source={x:Static views:AppShell.Instance}, Path=ShowAboutCommand}" />
+
 </Shell>

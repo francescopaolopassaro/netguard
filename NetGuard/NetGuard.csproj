@@ -3,7 +3,7 @@
 <PropertyGroup>
     <TargetFrameworks>net9.0-windows10.0.19041.0</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net9.0</TargetFrameworks>
-
+    <MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation> 
     <OutputType>Exe</OutputType>
     <RootNamespace>NetGuard</RootNamespace>
     <UseMaui>true</UseMaui>
@@ -79,6 +79,12 @@
     <Compile Remove="Platforms\Windows\**" />
     <MauiXaml Remove="Platforms\Windows\**" />
     <None Remove="Platforms\Windows\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <MauiXaml Update="Views\AboutPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </MauiXaml>
+	
   </ItemGroup>
   <ItemGroup>
     <None Update="Resources\Images\appicon.svg" Color="#1A202C" />

@@ -146,6 +146,12 @@ public class AppSettings
     public bool   UseDnsOverHttps    { get; set; } = true;
     public bool   DarkMode           { get; set; } = true;
     public ThreatLevel BlockThreshold { get; set; } = ThreatLevel.High;
+
+    // Scanner tuning
+    public int ScannerPerOperationTimeoutMs { get; set; } = 8000;
+    public int ScannerMaxConcurrency { get; set; } = 4;
+    public long ScannerMaxHashFileSizeBytes { get; set; } = 50 * 1024 * 1024; // 50 MB
+    public int ScannerMaxErrors { get; set; } = 50;
 }
 
 // ── Stats ──────────────────────────────────────────────────────────────────

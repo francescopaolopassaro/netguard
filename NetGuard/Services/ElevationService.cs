@@ -44,6 +44,7 @@ public static class ElevationService
 
     /// <summary>
     /// Restart the application with elevated privileges.
+    /// Best-effort attempts to bring the UAC prompt to the foreground.
     /// </summary>
     public static void RestartElevated()
     {
@@ -53,19 +54,48 @@ public static class ElevationService
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            Process.Start(new ProcessStartInfo(exe)
+            try
             {
-                UseShellExecute = true,
-                Verb = "runas"  // UAC prompt
-            });
+                var psi = new ProcessStartInfo(exe)
+                {
+                    UseShellExecute = true,
+                    Verb = "runas"  // UAC prompt
+                };
+
+                var proc = Process.Start(psi);
+                if (proc != null)
+                {
+                    // Try to give the UAC prompt some foreground focus — best-effort
+                    // Wait briefly for the process to initialize
+                    try
+                    {
+                        proc.WaitForInputIdle(2000);
+                    }
+                    catch { }
+
+                    try
+                    {
+                        var handle = proc.MainWindowHandle;
+                        if (handle != IntPtr.Zero)
+                        {
+                            SetForegroundWindow(handle);
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception)
+            {
+                // Fall back: show a note to the user (can't interact with UI here)
+            }
         }
         else
         {
-            // Linux: re-launch via pkexec
-            Process.Start(new ProcessStartInfo("pkexec", $"\"{exe}\"")
+            try
             {
-                UseShellExecute = false
-            });
+                Process.Start(new ProcessStartInfo("pkexec", $"\"{exe}\"") { UseShellExecute = false });
+            }
+            catch { }
         }
 
         Environment.Exit(0);
@@ -105,4 +135,7 @@ public static class ElevationService
         proc.WaitForExit();
         return result;
     }
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 }

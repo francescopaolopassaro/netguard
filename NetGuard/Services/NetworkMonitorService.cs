@@ -36,7 +36,7 @@ public class NetworkMonitorService
             var tcpConns = props.GetActiveTcpConnections();
             var listeners = props.GetActiveTcpListeners();
 
-            // Build PID→ProcessName map via netstat -b output (best-effort, needs elevation)
+            // Build PID→ProcessName map via netstat -ano (best-effort)
             var pidMap = await GetWindowsPidMapAsync();
 
             foreach (var c in tcpConns)
@@ -55,11 +55,10 @@ public class NetworkMonitorService
                     conn.ProcessId   = pid.Id;
                     conn.ProcessName = pid.Name;
                 }
-                conn.Domain = await ReverseDnsAsync(conn.RemoteAddress);
+                // leave Domain empty for now; we'll resolve in parallel
                 connections.Add(conn);
             }
 
-            // UDP listeners (no state)
             foreach (var u in props.GetActiveUdpListeners())
                 connections.Add(new NetworkConnection
                 {
@@ -68,6 +67,35 @@ public class NetworkMonitorService
                     LocalPort    = u.Port,
                     State        = "LISTEN"
                 });
+
+            // If IPGlobalProperties returned no meaningful connections, fallback to parsing netstat output
+            if (connections.Count == 0)
+            {
+                try
+                {
+                    var fallback = await GetConnectionsFromNetstatAsync();
+                    if (fallback.Count > 0)
+                    {
+                        // Resolve domains for fallback too, using same parallel approach below
+                        connections = fallback;
+                    }
+                }
+                catch { }
+            }
+
+            // Resolve reverse DNS in parallel with limited concurrency to avoid long sequential waits
+            var sem = new SemaphoreSlim(12, 12);
+            var tasks = connections.Select(async conn =>
+            {
+                try
+                {
+                    await sem.WaitAsync();
+                    try { conn.Domain = await ReverseDnsAsync(conn.RemoteAddress); } catch { conn.Domain = ""; }
+                }
+                finally { try { sem.Release(); } catch { } }
+            }).ToArray();
+
+            await Task.WhenAll(tasks);
         }
         catch (Exception ex)
         {
@@ -85,7 +113,6 @@ public class NetworkMonitorService
             var output = await RunCommandAsync("netstat", "-ano");
             foreach (var line in output.Split('\n'))
             {
-                // TCP    0.0.0.0:135    0.0.0.0:0    LISTENING    1234
                 var parts = line.Trim().Split(new[]{' ', '\t'}, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length < 5) continue;
                 if (!int.TryParse(parts[^1], out var pid)) continue;
@@ -94,12 +121,66 @@ public class NetworkMonitorService
                 {
                     var p = Process.GetProcessById(pid);
                     map[local] = (pid, p.ProcessName);
+                    p.Dispose();
                 }
-                catch { /* process may have exited */ }
+                catch { }
             }
         }
         catch (Exception ex) { Debug.WriteLine($"[PidMap] {ex.Message}"); }
         return map;
+    }
+
+    private static async Task<List<NetworkConnection>> GetConnectionsFromNetstatAsync()
+    {
+        var list = new List<NetworkConnection>();
+        try
+        {
+            var output = await RunCommandAsync("netstat", "-ano");
+            foreach (var line in output.Split('\n'))
+            {
+                var parts = line.Trim().Split(new[]{' ', '\t'}, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 5) continue;
+                // Typical: TCP  192.168.1.10:52345  93.184.216.34:80  ESTABLISHED  1234
+                var proto = parts[0];
+                var local = parts[1];
+                var remote = parts[2];
+                var state = parts.Length >= 4 ? parts[3] : "";
+                if (!int.TryParse(parts[^1], out var pid)) continue;
+
+                var localEp = ParseEndpoint(local);
+                var remoteEp = ParseEndpoint(remote);
+                if (localEp == null || remoteEp == null) continue;
+
+                // Skip unconnected
+                if (remoteEp.Address.Equals(IPAddress.Any) && remoteEp.Port == 0) continue;
+
+                var conn = new NetworkConnection
+                {
+                    Protocol = proto.ToUpperInvariant(),
+                    LocalAddress = localEp.Address.ToString(),
+                    LocalPort = localEp.Port,
+                    RemoteAddress = remoteEp.Address.ToString(),
+                    RemotePort = remoteEp.Port,
+                    State = state,
+                    ProcessId = pid
+                };
+                try { conn.ProcessName = Process.GetProcessById(pid).ProcessName; } catch { }
+                list.Add(conn);
+            }
+        }
+        catch (Exception ex) { Debug.WriteLine($"[NetstatFallback] {ex.Message}"); }
+        return list;
+    }
+
+    private static IPEndPoint? ParseEndpoint(string s)
+    {
+        var idx = s.LastIndexOf(':');
+        if (idx < 0) return null;
+        var addr = s[..idx];
+        var portStr = s[(idx + 1)..];
+        if (!IPAddress.TryParse(addr, out var ip)) return null;
+        if (!int.TryParse(portStr, out var port)) return null;
+        return new IPEndPoint(ip, port);
     }
 
     // ── Linux ─────────────────────────────────────────────────
@@ -125,11 +206,24 @@ public class NetworkMonitorService
                     var conn = ParseProcNetLine(line, proto, inodePidMap);
                     if (conn != null)
                     {
-                        conn.Domain = await ReverseDnsAsync(conn.RemoteAddress);
                         connections.Add(conn);
                     }
                 }
             }
+
+            // Resolve domains in parallel
+            var sem = new SemaphoreSlim(12, 12);
+            var tasks = connections.Select(async conn =>
+            {
+                try
+                {
+                    await sem.WaitAsync();
+                    try { conn.Domain = await ReverseDnsAsync(conn.RemoteAddress); } catch { conn.Domain = ""; }
+                }
+                finally { try { sem.Release(); } catch { } }
+            }).ToArray();
+
+            await Task.WhenAll(tasks);
         }
         catch (Exception ex)
         {
@@ -193,9 +287,6 @@ public class NetworkMonitorService
         return new IPEndPoint(ipAddr, port);
     }
 
-    /// <summary>
-    /// Builds inode → PID map by scanning /proc/[pid]/fd symlinks.
-    /// </summary>
     private static Dictionary<string, (int Pid, string Name)> BuildInodePidMap()
     {
         var map = new Dictionary<string, (int, string)>();
@@ -206,12 +297,7 @@ public class NetworkMonitorService
             {
                 var pid  = int.Parse(Path.GetFileName(pidDir));
                 var name = "";
-                try
-                {
-                    var commPath = Path.Combine(pidDir, "comm");
-                    if (File.Exists(commPath)) name = File.ReadAllText(commPath).Trim();
-                }
-                catch { }
+                try { name = File.ReadAllText(Path.Combine(pidDir, "comm")).Trim(); } catch { }
 
                 var fdDir = Path.Combine(pidDir, "fd");
                 if (!Directory.Exists(fdDir)) continue;
@@ -220,13 +306,11 @@ public class NetworkMonitorService
                     foreach (var fd in Directory.GetFiles(fdDir))
                     {
                         var target = new FileInfo(fd).LinkTarget ?? "";
-                        // "socket:[12345]"
-                        var m = Regex.Match(target, @"socket:\[(\d+)\]");
-                        if (m.Success)
-                            map[m.Groups[1].Value] = (pid, name);
+                        var m      = Regex.Match(target, @"socket:\[(\d+)\]");
+                        if (m.Success) map[m.Groups[1].Value] = (pid, name);
                     }
                 }
-                catch { /* permission denied for some PIDs */ }
+                catch { }
             }
         }
         catch { }

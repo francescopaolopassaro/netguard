@@ -6,6 +6,8 @@ using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.Threading;
 using System.Text;
+using System.IO;
+using System.Collections.Concurrent;
 
 namespace NetGuard.Services;
 
@@ -17,7 +19,22 @@ namespace NetGuard.Services;
 public class ProcessScannerService
 {
     private readonly Dictionary<string, string> _hashCache = new();
-    private readonly SemaphoreSlim _semaphore = new(Math.Max(2, Environment.ProcessorCount));
+    private SemaphoreSlim _semaphore;
+
+    private readonly string _diagLog = Path.Combine(Path.GetTempPath(), "NetGuard_process_scan.log");
+
+    // Configurable thresholds (defaulted, updated from AppSettings in ctor)
+    private int _perOperationTimeoutMs = 8000;
+    private long _maxHashFileSizeBytes = 50 * 1024 * 1024;
+    private int _maxErrors = 50;
+
+    // Deduplication of heavy operations across processes
+    private readonly ConcurrentDictionary<string, Task<string>> _hashTasks = new();
+    private readonly ConcurrentDictionary<string, Task<(bool, string)>> _sigTasks = new();
+
+    // Scan result summary
+    public bool LastScanCancelled { get; private set; }
+    public int LastScanErrorCount { get; private set; }
 
     // P/Invoke to get process image path without enumerating modules (safer than Process.MainModule)
 #if WINDOWS
@@ -35,10 +52,33 @@ public class ProcessScannerService
     private static extern bool CloseHandle(IntPtr hObject);
 #endif
 
+    public ProcessScannerService(AppSettings settings)
+    {
+        // Apply settings with safe fallbacks
+        try
+        {
+            _perOperationTimeoutMs = Math.Max(1000, settings.ScannerPerOperationTimeoutMs);
+            _maxHashFileSizeBytes = Math.Max(1, settings.ScannerMaxHashFileSizeBytes);
+            _maxErrors = Math.Max(1, settings.ScannerMaxErrors);
+            var concurrency = Math.Clamp(settings.ScannerMaxConcurrency, 1, Math.Max(1, Environment.ProcessorCount));
+            _semaphore = new SemaphoreSlim(concurrency, concurrency);
+        }
+        catch
+        {
+            _perOperationTimeoutMs = 8000;
+            _maxHashFileSizeBytes = 50 * 1024 * 1024;
+            _maxErrors = 50;
+            _semaphore = new SemaphoreSlim(Math.Min(4, Math.Max(2, Environment.ProcessorCount)));
+        }
+    }
+
     // ── Public API ────────────────────────────────────────────
 
     public async Task<List<ProcessInfo>> GetProcessesAsync(CancellationToken cancellationToken = default)
     {
+        LastScanCancelled = false;
+        LastScanErrorCount = 0;
+
         var result = new List<ProcessInfo>();
 
         Process[] procs;
@@ -49,12 +89,12 @@ public class ProcessScannerService
         catch (Exception ex)
         {
             Debug.WriteLine($"GetProcesses failed: {ex}");
+            File.AppendAllText(_diagLog, $"{DateTime.Now:O} GetProcesses failed: {ex}\n");
             return result;
         }
 
         // Per-scan error counter and threshold
         int errorCount = 0;
-        const int maxErrors = 20;
 
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var ct = linkedCts.Token;
@@ -62,10 +102,11 @@ public class ProcessScannerService
         void ReportError()
         {
             var v = Interlocked.Increment(ref errorCount);
-            if (v > maxErrors)
+            if (v > _maxErrors)
             {
                 Debug.WriteLine($"Process scan: too many errors ({v}), cancelling scan");
                 try { linkedCts.Cancel(); } catch { }
+                try { File.AppendAllText(_diagLog, $"{DateTime.Now:O} Too many errors ({v}), cancelling scan\n"); } catch { }
             }
         }
 
@@ -73,20 +114,29 @@ public class ProcessScannerService
 
         foreach (var p in procs)
         {
-            // Capture p for closure
-            var proc = p;
+            var proc = p; // capture
             tasks.Add(Task.Run(async () =>
             {
                 try
                 {
+                    // Wait for a slot; use the global cancellation token only here so waiting is not cancelled by short timeouts
                     await _semaphore.WaitAsync(ct);
                     if (ct.IsCancellationRequested) return null;
+
+                    // Build info; BuildProcessInfoSafeAsync will call ReportError only for fatal/unexpected errors
                     return await BuildProcessInfoSafeAsync(proc, ct, ReportError);
                 }
-                catch (OperationCanceledException) { return null; }
+                catch (OperationCanceledException)
+                {
+                    Debug.WriteLine($"Scan for pid {proc.Id} cancelled.");
+                    try { File.AppendAllText(_diagLog, $"{DateTime.Now:O} Scan for pid {proc.Id} cancelled.\n"); } catch { }
+                    return null;
+                }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Error scanning process {proc.Id}: {ex}");
+                    // Unexpected fatal error -> count it
+                    Debug.WriteLine($"Fatal error scanning process {proc.Id}: {ex}");
+                    try { File.AppendAllText(_diagLog, $"{DateTime.Now:O} Fatal scanning pid {proc.Id}: {ex}\n"); } catch { }
                     ReportError();
                     return null;
                 }
@@ -108,22 +158,103 @@ public class ProcessScannerService
             // Scan was cancelled; collect results from successfully completed tasks
             infos = tasks.Where(t => t.IsCompletedSuccessfully).Select(t => t.Result).ToArray();
             Debug.WriteLine("Process scan cancelled; returning partial results.");
+            try { File.AppendAllText(_diagLog, $"{DateTime.Now:O} Process scan cancelled; returning partial results.\n"); } catch { }
+            LastScanCancelled = true;
         }
 
         result.AddRange(infos.Where(i => i != null)!.Cast<ProcessInfo>());
+
+        // store final error count
+        LastScanErrorCount = errorCount;
+
         return result.OrderBy(p => p.Name).ToList();
     }
 
+    // Deduplicated hash compute with timeout
+    private Task<string> ComputeHashDedupedAsync(string path, CancellationToken ct)
+    {
+        return _hashTasks.GetOrAdd(path, pkey => Task.Run(async () =>
+        {
+            try
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_perOperationTimeoutMs);
+                var res = await ComputeHashAsync(path, cts.Token, null);
+                return res ?? string.Empty;
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"ComputeHash timed out for {path}");
+                try { File.AppendAllText(_diagLog, $"{DateTime.Now:O} ComputeHash timed out for {path}\n"); } catch { }
+                return string.Empty;
+            }
+            finally
+            {
+                _hashTasks.TryRemove(path, out _);
+            }
+        }));
+    }
+
+    // Deduplicated signature extraction with timeout
+    private Task<(bool, string)> ComputeSignatureDedupedAsync(string path, CancellationToken ct)
+    {
+        return _sigTasks.GetOrAdd(path, pkey => Task.Run(async () =>
+        {
+            try
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_perOperationTimeoutMs);
+                try
+                {
+                    var fi = new FileInfo(path);
+                    if (fi.Exists && fi.Length > _maxHashFileSizeBytes)
+                    {
+                        return (false, string.Empty);
+                    }
+                }
+                catch { }
+
+                var sig = await Task.Run(() => GetWindowsSignatureInfo(path));
+                return sig;
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine($"Signature extraction timed out for {path}");
+                try { File.AppendAllText(_diagLog, $"{DateTime.Now:O} Signature extraction timed out for {path}\n"); } catch { }
+                return (false, string.Empty);
+            }
+            finally
+            {
+                _sigTasks.TryRemove(path, out _);
+            }
+        }));
+    }
+
+    // Original ComputeHash (kept mostly unchanged) used by dedup wrapper
     public async Task<string> ComputeHashAsync(string path, CancellationToken cancellationToken = default, Action? onError = null)
     {
         if (string.IsNullOrEmpty(path)) return "";
         if (_hashCache.TryGetValue(path, out var cached)) return cached;
+
         try
         {
+            // Skip hashing extremely large files to avoid long blocking
+            try
+            {
+                var fi = new FileInfo(path);
+                if (fi.Exists && fi.Length > _maxHashFileSizeBytes)
+                {
+                    Debug.WriteLine($"Skipping hash for large file: {path} ({fi.Length} bytes)");
+                    try { File.AppendAllText(_diagLog, $"{DateTime.Now:O} Skipping hash for large file: {path} ({fi.Length})\n"); } catch { }
+                    return string.Empty;
+                }
+            }
+            catch { /* ignore file info errors and try hashing */ }
+
             await using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             using var sha = SHA256.Create();
             // Compute hash on thread pool to avoid blocking caller thread
-            var hashBytes = await Task.Run(() => sha.ComputeHash(fs), cancellationToken);
+            var hashBytes = await Task.Run(() => sha.ComputeHash(fs));
             var hash = Convert.ToHexString(hashBytes).ToLowerInvariant();
             _hashCache[path] = hash;
             return hash;
@@ -132,12 +263,14 @@ public class ProcessScannerService
         catch (CryptographicException cex)
         {
             Debug.WriteLine($"ComputeHash cryptographic error for '{path}': {cex.Message}");
+            try { File.AppendAllText(_diagLog, $"{DateTime.Now:O} ComputeHash cryptographic error for '{path}': {cex.Message}\n"); } catch { }
             try { onError?.Invoke(); } catch { }
             return "";
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"ComputeHash failed for '{path}': {ex.Message}");
+            try { File.AppendAllText(_diagLog, $"{DateTime.Now:O} ComputeHash failed for '{path}': {ex.Message}\n"); } catch { }
             try { onError?.Invoke(); } catch { }
             return "";
         }
@@ -208,30 +341,28 @@ public class ProcessScannerService
         {
             Debug.WriteLine($"Error reading basic info for pid {p.Id}: {ex}");
             // unexpected error -> count it
+            try { File.AppendAllText(_diagLog, $"{DateTime.Now:O} Error reading basic info for pid {p.Id}: {ex}\n"); } catch { }
             onError?.Invoke();
         }
 
         if (!string.IsNullOrEmpty(info.Path))
         {
-            // Compute hash with cancellation support and error reporting
-            info.Hash = await ComputeHashAsync(info.Path, cancellationToken, onError);
+            // Deduplicated compute hash with timeout
+            info.Hash = await ComputeHashDedupedAsync(info.Path, cancellationToken);
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 try
                 {
-                    (info.IsSigned, info.Publisher) = GetWindowsSignatureInfo(info.Path);
+                    // Use deduped signature extraction with timeout
+                    var sig = await ComputeSignatureDedupedAsync(info.Path, cancellationToken);
+                    info.IsSigned = sig.Item1;
+                    info.Publisher = sig.Item2 ?? string.Empty;
                 }
-                catch (CryptographicException cex)
+                catch (Exception exSig)
                 {
-                    Debug.WriteLine($"GetWindowsSignatureInfo cryptographic error for '{info.Path}': {cex.Message}");
-                    onError?.Invoke();
-                    info.IsSigned = false;
-                    info.Publisher = string.Empty;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"GetWindowsSignatureInfo failed for '{info.Path}': {ex.Message}");
+                    Debug.WriteLine($"Signature extraction failed for '{info.Path}': {exSig.Message}");
+                    try { File.AppendAllText(_diagLog, $"{DateTime.Now:O} Signature extraction failed for '{info.Path}': {exSig.Message}\n"); } catch { }
                     onError?.Invoke();
                     info.IsSigned = false;
                     info.Publisher = string.Empty;

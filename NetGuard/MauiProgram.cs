@@ -123,6 +123,7 @@ public static class MauiProgram
 
         // MonitoringEngine - ORA dovrebbe funzionare
         builder.Services.AddSingleton<MonitoringEngine>();
+        // NOTE: monitoring engine will be started automatically after build below
 
         // ==================== VIEWMODELS ====================
         builder.Services.AddTransient<DashboardViewModel>();
@@ -147,6 +148,19 @@ public static class MauiProgram
         // IMPORTANTE: NON registriamo l'App qui! La piattaforma crea l'istanza
         // builder.Services.AddSingleton<App>();  ← RIMOSSO
 
-        return builder.Build();
+        var app = builder.Build();
+
+        // Start the monitoring engine in a background task so it doesn't block UI startup
+        try
+        {
+            var engine = app.Services.GetRequiredService<MonitoringEngine>();
+            Task.Run(() =>
+            {
+                try { engine.Start(); } catch { }
+            });
+        }
+        catch { }
+
+        return app;
     }
 }

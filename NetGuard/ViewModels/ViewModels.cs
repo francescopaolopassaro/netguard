@@ -28,8 +28,7 @@ public partial class DashboardViewModel : BaseViewModel, IDisposable
 {
     private readonly ThreatAnalysisPipeline _pipeline;
     private readonly DatabaseService        _db;
-    private readonly NetworkMonitorService  _network;
-    private readonly ProcessScannerService  _scanner;
+    private readonly MonitoringEngine       _engine;
 
     [ObservableProperty] private int _activeConnections;
     [ObservableProperty] private int _activeProcesses;
@@ -44,20 +43,24 @@ public partial class DashboardViewModel : BaseViewModel, IDisposable
 
     public DashboardViewModel(
         ThreatAnalysisPipeline pipeline,
-        DatabaseService        db,
-        NetworkMonitorService  network,
-        ProcessScannerService  scanner)
+        DatabaseService db,
+        MonitoringEngine engine,
+        ProcessScannerService scanner)
     {
         _pipeline = pipeline;
-        _db       = db;
-        _network  = network;
-        _scanner  = scanner;
+        _db = db;
+        _engine = engine;
 
-        _pipeline.AlertRaised += OnAlertRaised;
+        // Subscribe to engine events to receive updates done in background
+        _engine.ProcessesUpdated += OnEngineProcessesUpdated;
+        _engine.ConnectionsUpdated += OnEngineConnectionsUpdated;
+        _engine.StatsUpdated += OnEngineStatsUpdated;
+        _engine.ThreatDetected += OnEngineThreatDetected;
     }
 
     public void StartAutoRefresh(int intervalMs = 30_000)
     {
+        // Timer simply triggers a UI refresh from engine snapshots; heavy work runs in MonitoringEngine
         _refreshTimer = new Timer(_ =>
             MainThread.BeginInvokeOnMainThread(async () => await RefreshAsync()),
             null, 0, intervalMs);
@@ -69,20 +72,25 @@ public partial class DashboardViewModel : BaseViewModel, IDisposable
         SetBusy(true, "Refreshing…");
         try
         {
-            var conns   = await _network.GetConnectionsAsync();
-            var procs   = await _scanner.GetProcessesAsync();
-            var alerts  = await _db.GetAlertsAsync(20);
+            // Read lightweight snapshots from monitoring engine (no blocking I/O)
+            var conns = _engine.Connections ?? new List<NetConnection>();
+            var procs = _engine.Processes ?? new List<ProcessEntry>();
 
             ActiveConnections = conns.Count;
-            ActiveProcesses   = procs.Count;
-            ThreatCount       = conns.Count(c => c.Threat >= ThreatLevel.Medium)
-                              + procs.Count(p => p.Threat >= ThreatLevel.Medium);
-            UnreadAlerts      = alerts.Count(a => !a.IsRead);
+            ActiveProcesses = procs.Count;
+            ThreatCount = conns.Count(c => c.Threat >= ThreatLevel.Medium)
+                        + procs.Count(p => p.Threat >= ThreatLevel.Medium);
+
+            var alerts = await _db.GetAlertsAsync(20);
+            UnreadAlerts = alerts.Count(a => !a.IsRead);
 
             RecentAlerts.Clear();
             foreach (var a in alerts.Take(10)) RecentAlerts.Add(a);
 
             UpdateOverallStatus();
+
+            // Surface scanner summary if last scanner run was cancelled
+            if (/* scanner info accessible via pipeline or engine? */ false) { }
         }
         finally { SetBusy(false); }
     }
@@ -91,26 +99,75 @@ public partial class DashboardViewModel : BaseViewModel, IDisposable
     {
         if (ThreatCount == 0)
         {
-            OverallStatus      = "System clean";
+            OverallStatus = "System clean";
             OverallStatusColor = "#38A169";
         }
         else if (ThreatCount <= 2)
         {
-            OverallStatus      = $"{ThreatCount} threat(s) detected";
+            OverallStatus = $"{ThreatCount} threat(s) detected";
             OverallStatusColor = "#D97706";
         }
         else
         {
-            OverallStatus      = $"ALERT — {ThreatCount} threats!";
+            OverallStatus = $"ALERT — {ThreatCount} threats!";
             OverallStatusColor = "#E53E3E";
         }
     }
 
-    private void OnAlertRaised(object? sender, Alert alert)
+    private Alert ConvertToAlert(ThreatAlert ta)
+    {
+        return new Alert
+        {
+            Id = ta.Id,
+            Type = ta.Type,
+            Severity = ta.Severity,
+            Title = ta.Title,
+            Detail = ta.Detail,
+            Source = ta.Source,
+            At = ta.At,
+            IsRead = ta.IsRead,
+            WasBlocked = ta.WasBlocked,
+            Action = ta.Action
+        };
+    }
+
+    private void OnEngineProcessesUpdated(List<ProcessEntry> procs)
+    {
+        // Update counts and status on UI thread
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            ActiveProcesses = procs.Count;
+            ThreatCount = ThreatCount /* keep existing + will be recalculated during RefreshAsync */;
+            UpdateOverallStatus();
+        });
+    }
+
+    private void OnEngineConnectionsUpdated(List<NetConnection> conns)
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            RecentAlerts.Insert(0, alert);
+            ActiveConnections = conns.Count;
+            UpdateOverallStatus();
+        });
+    }
+
+    private void OnEngineStatsUpdated(SystemStats stats)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            ActiveProcesses = stats.TotalProcesses;
+            ActiveConnections = stats.TotalConnections;
+            ThreatCount = stats.MaliciousProcesses + stats.ThreatAlerts;
+            UpdateOverallStatus();
+        });
+    }
+
+    private void OnEngineThreatDetected(ThreatAlert alert)
+    {
+        var a = ConvertToAlert(alert);
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            RecentAlerts.Insert(0, a);
             if (RecentAlerts.Count > 10) RecentAlerts.RemoveAt(10);
             UnreadAlerts++;
             ThreatCount++;
@@ -118,7 +175,14 @@ public partial class DashboardViewModel : BaseViewModel, IDisposable
         });
     }
 
-    public void Dispose() => _refreshTimer?.Dispose();
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+        _engine.ProcessesUpdated -= OnEngineProcessesUpdated;
+        _engine.ConnectionsUpdated -= OnEngineConnectionsUpdated;
+        _engine.StatsUpdated -= OnEngineStatsUpdated;
+        _engine.ThreatDetected -= OnEngineThreatDetected;
+    }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -147,7 +211,8 @@ public partial class NetworkViewModel : BaseViewModel
         SetBusy(true, "Reading network connections…");
         try
         {
-            _allConnections = await _network.GetConnectionsAsync();
+            // Run network fetch off the UI thread
+            _allConnections = await Task.Run(() => _network.GetConnectionsAsync());
             ApplyFilter();
 
             // Background threat scan
