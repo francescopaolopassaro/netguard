@@ -1,11 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 456 456">
-  <rect width="456" height="456" fill="#1A202C"/>
-  <path d="M228 80 L340 130 L340 240 C340 310 290 360 228 380 C166 360 116 310 116 240 L116 130 Z"
-        fill="none" stroke="#3182CE" stroke-width="12" stroke-linejoin="round"/>
-  <path d="M180 228 L210 258 L278 192"
-        fill="none" stroke="#38A169" stroke-width="14"
+  <rect width="456" height="456" fill="#0D1117"/>
+  <path d="M228 80 L340 128 L340 240 C340 312 290 362 228 382 C166 362 116 312 116 240 L116 128 Z"
+        fill="none" stroke="#1F6FEB" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M180 228 L210 258 L276 194"
+        fill="none" stroke="#30D158" stroke-width="10"
         stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="228" y="420" text-anchor="middle"
-        font-family="sans-serif" font-size="28" fill="#A0AEC0">NetGuard</text>
+  <text x="228" y="415" text-anchor="middle"
+        font-family="sans-serif" font-size="24" fill="#8B949E"
+        letter-spacing="4">NETGUARD</text>
 </svg>

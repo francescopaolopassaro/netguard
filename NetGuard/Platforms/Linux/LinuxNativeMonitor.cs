@@ -1,219 +1,124 @@
 #if !WINDOWS
-using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace NetGuard.Platforms.Linux;
 
-/// <summary>
-/// Linux-only helpers: parses /proc filesystem for process and
-/// network information with no external dependencies.
-/// For privileged monitoring (eBPF, audit), see integration notes below.
-/// </summary>
 public static class LinuxNativeMonitor
 {
-    // ── /proc filesystem readers ──────────────────────────────
+    // ── /proc helpers ─────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Reads /proc/[pid]/status for a quick process snapshot.
-    /// More reliable than System.Diagnostics.Process on some distros.
-    /// </summary>
-    public static ProcStatus? ReadProcStatus(int pid)
-    {
-        var path = $"/proc/{pid}/status";
-        if (!File.Exists(path)) return null;
-
-        try
-        {
-            var lines = File.ReadAllLines(path);
-            var dict  = lines
-                .Where(l => l.Contains(':'))
-                .ToDictionary(
-                    l => l[..l.IndexOf(':')].Trim(),
-                    l => l[(l.IndexOf(':') + 1)..].Trim());
-
-            return new ProcStatus
-            {
-                Pid  = pid,
-                Name = dict.GetValueOrDefault("Name",   ""),
-                State= dict.GetValueOrDefault("State",  ""),
-                VmRss= ParseKb(dict.GetValueOrDefault("VmRSS", "0 kB")),
-                Uid  = ParseFirstInt(dict.GetValueOrDefault("Uid", "0")),
-                Ppid = ParseFirstInt(dict.GetValueOrDefault("PPid","0"))
-            };
-        }
-        catch { return null; }
-    }
-
-    /// <summary>Returns the executable path from /proc/[pid]/exe symlink.</summary>
     public static string GetExePath(int pid)
     {
         try { return new FileInfo($"/proc/{pid}/exe").LinkTarget ?? ""; }
         catch { return ""; }
     }
 
-    /// <summary>
-    /// Returns all open file descriptors for a process as symlink targets.
-    /// Used to detect processes with suspicious open sockets.
-    /// </summary>
-    public static List<string> GetOpenFds(int pid)
+    public static string GetComm(int pid)
     {
-        var result = new List<string>();
-        var fdDir  = $"/proc/{pid}/fd";
-        if (!Directory.Exists(fdDir)) return result;
+        try { return File.ReadAllText($"/proc/{pid}/comm").Trim(); }
+        catch { return ""; }
+    }
+
+    public static string GetCmdline(int pid)
+    {
+        try { return File.ReadAllText($"/proc/{pid}/cmdline").Replace('\0', ' ').Trim(); }
+        catch { return ""; }
+    }
+
+    public static int GetUid(int pid)
+    {
         try
         {
-            foreach (var fd in Directory.GetFiles(fdDir))
-            {
-                var target = new FileInfo(fd).LinkTarget ?? "";
-                if (!string.IsNullOrEmpty(target)) result.Add(target);
-            }
+            var line = File.ReadAllLines($"/proc/{pid}/status")
+                .FirstOrDefault(l => l.StartsWith("Uid:"));
+            return line == null ? -1 : int.Parse(line.Split('\t')[1].Trim());
         }
-        catch { /* permission denied */ }
-        return result;
+        catch { return -1; }
     }
 
-    /// <summary>
-    /// Reads /proc/net/tcp and /proc/net/tcp6 and returns a summary
-    /// count of ESTABLISHED connections per process.
-    /// </summary>
-    public static Dictionary<int, int> GetEstablishedCountByPid()
-    {
-        var counts     = new Dictionary<int, int>();
-        var inodePids  = BuildInodeToPidMap();
-
-        foreach (var file in new[]{ "/proc/net/tcp", "/proc/net/tcp6" })
-        {
-            if (!File.Exists(file)) continue;
-            foreach (var line in File.ReadAllLines(file).Skip(1))
-            {
-                var parts = line.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length < 10) continue;
-                if (parts[3] != "01") continue; // 01 = ESTABLISHED
-                var inode = parts[9];
-                if (inodePids.TryGetValue(inode, out var pid))
-                    counts[pid] = counts.GetValueOrDefault(pid, 0) + 1;
-            }
-        }
-        return counts;
-    }
-
-    // ── eBPF / audit integration points ─────────────────────
-    // For real-time kernel-level monitoring (new process execve, socket
-    // connect syscalls) on Linux the recommended approaches are:
-    //
-    //   1. auditd rules + parsing /var/log/audit/audit.log
-    //      Requires: libaudit, auditd running, root
-    //      Rule example: auditctl -a always,exit -F arch=b64 -S execve
-    //
-    //   2. BCC/eBPF (bpftrace or libbpf)
-    //      Requires: Linux ≥ 5.8, CAP_BPF or root
-    //      Trace syscalls: execve, connect, bind with PID context
-    //
-    //   3. inotifywait on /proc to detect new PID directories
-    //      No root required, lower fidelity
-    //
-    // NetGuard uses polled /proc scanning for zero-dependency operation.
-    // An optional integration class per approach can be added here.
-
-    /// <summary>
-    /// Watches /proc using a polling loop to detect new processes.
-    /// No root required; detects processes within ~1 scan interval.
-    /// </summary>
+    /// <summary>Async generator of new PIDs appearing in /proc.</summary>
     public static async IAsyncEnumerable<int> WatchNewProcessesAsync(
-        TimeSpan interval,
-        CancellationToken ct)
+        TimeSpan interval, CancellationToken ct)
     {
-        var known = new HashSet<int>(GetAllPids());
+        var known = GetAllPids().ToHashSet();
         while (!ct.IsCancellationRequested)
         {
-            await Task.Delay(interval, ct);
+            await Task.Delay(interval, ct).ContinueWith(_ => { });
             var current = GetAllPids();
             foreach (var pid in current.Except(known))
             {
                 known.Add(pid);
                 yield return pid;
             }
-            // Clean up exited PIDs
             known.IntersectWith(current);
         }
     }
 
-    public static List<int> GetAllPids()
-        => Directory.GetDirectories("/proc")
+    public static List<int> GetAllPids() =>
+        Directory.GetDirectories("/proc")
             .Select(d => Path.GetFileName(d))
             .Where(n => int.TryParse(n, out _))
             .Select(int.Parse)
             .ToList();
 
-    // ── cgroups v2: CPU/memory limits ────────────────────────
-    public static (long CpuShares, long MemLimitBytes) ReadCgroups(int pid)
+    // ── Firewall (iptables / nftables) ────────────────────────────────────
+
+    public static async Task<bool> DropIpAsync(string ip)
     {
-        var cgroupFile = $"/proc/{pid}/cgroup";
-        if (!File.Exists(cgroupFile)) return (0, 0);
+        // Try iptables
+        var (code, _) = await RunAsync("iptables", $"-A OUTPUT -d {ip} -j DROP");
+        if (code == 0) return true;
+        // Fallback to nftables
+        (code, _) = await RunAsync("nft", $"add rule ip filter output ip daddr {ip} drop");
+        return code == 0;
+    }
+
+    public static async Task<bool> RemoveDropIpAsync(string ip)
+    {
+        var (code, _) = await RunAsync("iptables", $"-D OUTPUT -d {ip} -j DROP");
+        return code == 0;
+    }
+
+    // ── DNS (hosts file) ──────────────────────────────────────────────────
+
+    public static async Task<bool> BlockDomainInHostsAsync(string domain)
+    {
+        const string path = "/etc/hosts";
         try
         {
-            // Read the cgroup path then look up cpu/memory controllers
-            var lines  = File.ReadAllLines(cgroupFile);
-            var cgPath = lines.FirstOrDefault(l => l.Contains("::"))?.Split("::")[1].Trim() ?? "";
-            var cgRoot = $"/sys/fs/cgroup{cgPath}";
-
-            var cpu = ReadLongFile(Path.Combine(cgRoot, "cpu.shares"));
-            var mem = ReadLongFile(Path.Combine(cgRoot, "memory.max"));
-            return (cpu, mem);
+            var entry = $"127.0.0.1 {domain} # NetGuard";
+            var lines = File.Exists(path)
+                ? (await File.ReadAllLinesAsync(path)).ToList()
+                : new List<string>();
+            if (lines.Any(l => l.Contains(domain))) return true;
+            lines.Add(entry);
+            await File.WriteAllLinesAsync(path, lines);
+            await RunAsync("systemd-resolve", "--flush-caches");
+            return true;
         }
-        catch { return (0, 0); }
+        catch { return false; }
     }
 
-    // ── Helpers ───────────────────────────────────────────────
-    private static Dictionary<string, int> BuildInodeToPidMap()
+    // ── Shared ────────────────────────────────────────────────────────────
+
+    private static async Task<(int Code, string Output)> RunAsync(string cmd, string args)
     {
-        var map = new Dictionary<string, int>();
-        foreach (var pidDir in Directory.GetDirectories("/proc")
-            .Where(d => int.TryParse(Path.GetFileName(d), out _)))
+        try
         {
-            var pid   = int.Parse(Path.GetFileName(pidDir));
-            var fdDir = $"{pidDir}/fd";
-            if (!Directory.Exists(fdDir)) continue;
-            try
-            {
-                foreach (var fd in Directory.GetFiles(fdDir))
+            using var proc = System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(cmd, args)
                 {
-                    var target = new FileInfo(fd).LinkTarget ?? "";
-                    var m      = System.Text.RegularExpressions.Regex.Match(target, @"socket:\[(\d+)\]");
-                    if (m.Success) map[m.Groups[1].Value] = pid;
-                }
-            }
-            catch { }
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError  = true
+                });
+            if (proc == null) return (-1, "");
+            var output = await proc.StandardOutput.ReadToEndAsync();
+            await proc.WaitForExitAsync();
+            return (proc.ExitCode, output);
         }
-        return map;
+        catch { return (-1, ""); }
     }
-
-    private static long ParseKb(string s)
-    {
-        var parts = s.Split(' ');
-        return long.TryParse(parts[0], out var v) ? v : 0;
-    }
-
-    private static int ParseFirstInt(string s)
-    {
-        var parts = s.Split('\t', ' ');
-        return int.TryParse(parts[0], out var v) ? v : 0;
-    }
-
-    private static long ReadLongFile(string path)
-    {
-        if (!File.Exists(path)) return 0;
-        var text = File.ReadAllText(path).Trim();
-        return text == "max" ? long.MaxValue : long.TryParse(text, out var v) ? v : 0;
-    }
-}
-
-public class ProcStatus
-{
-    public int    Pid   { get; set; }
-    public string Name  { get; set; } = "";
-    public string State { get; set; } = "";
-    public long   VmRss { get; set; }  // KB
-    public int    Uid   { get; set; }
-    public int    Ppid  { get; set; }
 }
 #endif

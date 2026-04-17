@@ -7,21 +7,22 @@ namespace NetGuard.Views;
 public partial class DashboardPage : ContentPage
 {
     private readonly DashboardViewModel _vm;
-    private readonly ExportService      _export;
+    private readonly ExportService _export;
 
+    // Costruttore con Dependency Injection
     public DashboardPage(DashboardViewModel vm, ExportService export)
     {
         InitializeComponent();
-        _vm     = vm;
+        _vm = vm;
         _export = export;
-        BindingContext = vm;
+        BindingContext = vm;           // Importantissimo
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        _vm.StartAutoRefresh(30_000);
-        await _vm.RefreshCommand.ExecuteAsync(null);
+        _vm.StartAutoRefresh(30_000);           // Refresh automatico ogni 30 secondi
+        await _vm.RefreshAsync();               // Refresh iniziale
     }
 
     protected override void OnDisappearing()
@@ -34,7 +35,7 @@ public partial class DashboardPage : ContentPage
     private async void OnAlertSelected(object? sender, SelectionChangedEventArgs e)
     {
         if (e.CurrentSelection.FirstOrDefault() is not Alert alert) return;
-        AlertList.SelectedItem = null;
+        AlertList.SelectedItem = null;   // deseleziona subito
 
         await Shell.Current.GoToAsync($"alertdetail?alertId={alert.Id}");
     }
@@ -45,11 +46,12 @@ public partial class DashboardPage : ContentPage
         try
         {
             var path = await _export.ExportAlertsAsync();
-            await DisplayAlert("Exported", $"Alerts saved to:\n{path}", "OK");
+            await DisplayAlert("Esportazione completata",
+                $"Gli alert sono stati salvati in:\n{path}", "OK");
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Export failed", ex.Message, "OK");
+            await DisplayAlert("Errore di esportazione", ex.Message, "OK");
         }
     }
 }

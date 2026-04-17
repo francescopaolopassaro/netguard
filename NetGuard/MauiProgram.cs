@@ -17,63 +17,83 @@ public static class MauiProgram
             .UseMauiCommunityToolkit()
             .ConfigureFonts(fonts =>
             {
-                fonts.AddFont("OpenSans-Regular.ttf",   "OpenSansRegular");
-                fonts.AddFont("OpenSans-SemiBold.ttf",  "OpenSansSemiBold");
+                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+                fonts.AddFont("OpenSans-SemiBold.ttf", "OpenSansSemiBold");
             });
-
-        // ── Core Services (Singleton) ─────────────────────────
-        builder.Services.AddSingleton<DatabaseService>();
-        builder.Services.AddSingleton<WhitelistEngine>();
-        builder.Services.AddSingleton<NetworkMonitorService>();
-        builder.Services.AddSingleton<ProcessScannerService>();
-        builder.Services.AddSingleton<IpLookupService>();
-        builder.Services.AddSingleton<ExportService>();
-
-        builder.Services.AddSingleton<DnsCheckerService>(sp =>
-        {
-            var db       = sp.GetRequiredService<DatabaseService>();
-            var settings = db.LoadSettingsAsync().GetAwaiter().GetResult();
-            return new DnsCheckerService(settings);
-        });
-
-        builder.Services.AddSingleton<ThreatIntelService>(sp =>
-        {
-            var db       = sp.GetRequiredService<DatabaseService>();
-            var settings = db.LoadSettingsAsync().GetAwaiter().GetResult();
-            return new ThreatIntelService(db, settings);
-        });
-
-        builder.Services.AddSingleton<NotificationService>(sp =>
-        {
-            var db       = sp.GetRequiredService<DatabaseService>();
-            var settings = db.LoadSettingsAsync().GetAwaiter().GetResult();
-            return new NotificationService(db, settings);
-        });
-
-        builder.Services.AddSingleton<ThreatAnalysisPipeline>();
-
-        // ── ViewModels (Transient — fresh per page visit) ─────
-        builder.Services.AddTransient<DashboardViewModel>();
-        builder.Services.AddTransient<NetworkViewModel>();
-        builder.Services.AddTransient<ProcessViewModel>();
-        builder.Services.AddTransient<RulesViewModel>();
-        builder.Services.AddTransient<SettingsViewModel>(); // DI auto-resolves all 4 ctor params
-
-        // ── Pages ─────────────────────────────────────────────
-        builder.Services.AddTransient<DashboardPage>();
-        builder.Services.AddTransient<NetworkPage>();
-        builder.Services.AddTransient<ProcessPage>();
-        builder.Services.AddTransient<RulesPage>();
-        builder.Services.AddTransient<SettingsPage>();
-        builder.Services.AddTransient<AlertDetailPage>();
-        builder.Services.AddTransient<ProcessDetailPage>();
-        builder.Services.AddTransient<ConnectionDetailPage>();
 
 #if DEBUG
         builder.Logging.AddDebug();
 #endif
 
+        // ==================== CORE SERVICES ====================
+        builder.Services.AddSingleton<DatabaseService>();
+
+        builder.Services.AddSingleton<WhitelistService>();           // ← Richiesto da MonitoringEngine
+        builder.Services.AddSingleton<WhitelistEngine>();            // ← Usato altrove (Pipeline)
+
+        builder.Services.AddSingleton<ProcessService>();
+        builder.Services.AddSingleton<ProcessScannerService>();
+        builder.Services.AddSingleton<NetworkService>();
+        builder.Services.AddSingleton<NetworkMonitorService>();
+        builder.Services.AddSingleton<BlockingService>();
+        builder.Services.AddSingleton<IpLookupService>();
+        builder.Services.AddSingleton<DnsCheckerService>();
+        builder.Services.AddSingleton<ExportService>();
+        builder.Services.AddSingleton<NotificationService>();
+
+        // ThreatService (usato da MonitoringEngine)
+        builder.Services.AddSingleton<ThreatService>(sp =>
+        {
+            var db = sp.GetRequiredService<DatabaseService>();
+            var settings = db.LoadSettingsAsync().GetAwaiter().GetResult();
+            return new ThreatService(settings);
+        });
+
+        // ThreatIntelService (nuovo)
+        builder.Services.AddSingleton<ThreatIntelService>(sp =>
+        {
+            var db = sp.GetRequiredService<DatabaseService>();
+            var settings = db.LoadSettingsAsync().GetAwaiter().GetResult();
+            return new ThreatIntelService(db, settings);
+        });
+
+        // ThreatAnalysisPipeline
+        builder.Services.AddSingleton<ThreatAnalysisPipeline>(sp =>
+        {
+            return new ThreatAnalysisPipeline(
+                sp.GetRequiredService<WhitelistEngine>(),
+                sp.GetRequiredService<DnsCheckerService>(),
+                sp.GetRequiredService<ThreatIntelService>(),
+                sp.GetRequiredService<DatabaseService>(),
+                sp.GetRequiredService<ProcessScannerService>()
+            );
+        });
+
+        // MonitoringEngine - ORA dovrebbe funzionare
+        builder.Services.AddSingleton<MonitoringEngine>();
+
+        // ==================== VIEWMODELS ====================
+        builder.Services.AddTransient<DashboardViewModel>();
+        builder.Services.AddTransient<NetworkViewModel>();
+        builder.Services.AddTransient<ProcessViewModel>();
+        builder.Services.AddTransient<RulesViewModel>();
+        builder.Services.AddTransient<SettingsViewModel>();
+        builder.Services.AddSingleton<MainViewModel>();
+
+        // ==================== PAGES ====================
+        builder.Services.AddTransient<DashboardPage>();
+        builder.Services.AddTransient<NetworkPage>();
+        builder.Services.AddTransient<ProcessPage>();
+        builder.Services.AddTransient<RulesPage>();
+        builder.Services.AddTransient<SettingsPage>();
+
+        builder.Services.AddTransient<ProcessDetailPage>();
+        builder.Services.AddTransient<ConnectionDetailPage>();
+        builder.Services.AddTransient<AlertDetailPage>();
+
+        // Application
+        builder.Services.AddSingleton<App>();
+
         return builder.Build();
     }
 }
-

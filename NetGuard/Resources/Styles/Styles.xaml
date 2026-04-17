@@ -3,83 +3,147 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
                     xmlns:converters="clr-namespace:NetGuard.Converters">
 
-    <!-- ── Converters (global) ──────────────────────────────── -->
-    <converters:IsNotEmptyConverter     x:Key="IsNotEmptyConverter"/>
-    <converters:BoolToStringConverter   x:Key="BoolToStringConverter"/>
-    <converters:ThreatLevelToColorConverter x:Key="ThreatLevelToColor"/>
-    <converters:IsThreatConverter       x:Key="IsThreatConverter"/>
-    <converters:BytesToHumanConverter   x:Key="BytesToHuman"/>
+    <!-- Converters -->
+    <converters:ThreatColorConverter    x:Key="ThreatColor"/>
+    <converters:ThreatBgConverter       x:Key="ThreatBg"/>
+    <converters:IsNotEmptyConverter     x:Key="IsNotEmpty"/>
+    <converters:BoolToColorConverter    x:Key="BoolToColor"/>
+    <converters:InvertBoolConverter     x:Key="InvertBool"/>
 
-    <!-- ── Shell ─────────────────────────────────────────────── -->
-    <Style TargetType="Shell" ApplyToDerivedTypes="True">
-        <Setter Property="Shell.BackgroundColor"
-                Value="{AppThemeBinding Light=#1A202C, Dark=#111827}"/>
-        <Setter Property="Shell.ForegroundColor" Value="White"/>
-        <Setter Property="Shell.TitleColor"      Value="White"/>
-        <Setter Property="Shell.DisabledColor"   Value="#718096"/>
-        <Setter Property="Shell.UnselectedColor" Value="#A0AEC0"/>
-        <Setter Property="Shell.NavBarHasShadow" Value="False"/>
-    </Style>
-
-    <!-- ── Global Label ─────────────────────────────────────── -->
-    <Style TargetType="Label">
-        <Setter Property="TextColor"
-                Value="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
-        <Setter Property="FontFamily" Value="OpenSansRegular"/>
-    </Style>
-
-    <!-- ── Entry ────────────────────────────────────────────── -->
-    <Style TargetType="Entry">
-        <Setter Property="TextColor"
-                Value="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
-        <Setter Property="PlaceholderColor"
-                Value="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
-        <Setter Property="FontSize" Value="14"/>
-    </Style>
-
-    <!-- ── Button (primary) ─────────────────────────────────── -->
-    <Style TargetType="Button">
-        <Setter Property="FontFamily"  Value="OpenSansSemiBold"/>
-        <Setter Property="FontSize"    Value="14"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="VisualStateManager.VisualStateGroups">
-            <VisualStateGroupList>
-                <VisualStateGroup x:Name="CommonStates">
-                    <VisualState x:Name="Normal"/>
-                    <VisualState x:Name="Disabled">
-                        <VisualState.Setters>
-                            <Setter Property="Opacity" Value="0.5"/>
-                        </VisualState.Setters>
-                    </VisualState>
-                </VisualStateGroup>
-            </VisualStateGroupList>
-        </Setter>
-    </Style>
-
-    <!-- ── Frame (card) ─────────────────────────────────────── -->
-    <Style TargetType="Frame">
-        <Setter Property="BackgroundColor"
-                Value="{AppThemeBinding Light=#FFFFFF, Dark=#2D3748}"/>
-        <Setter Property="BorderColor"
-                Value="{AppThemeBinding Light=#E2E8F0, Dark=#4A5568}"/>
-        <Setter Property="CornerRadius" Value="10"/>
-        <Setter Property="HasShadow"    Value="False"/>
-    </Style>
-
-    <!-- ── ContentPage ──────────────────────────────────────── -->
+    <!-- ── Page ─────────────────────────────────────────────────────────── -->
     <Style TargetType="ContentPage" ApplyToDerivedTypes="True">
-        <Setter Property="BackgroundColor"
-                Value="{AppThemeBinding Light=#F0F4F8, Dark=#1A202C}"/>
+        <Setter Property="BackgroundColor" Value="{StaticResource BgBase}"/>
     </Style>
 
-    <!-- ── SearchBar ─────────────────────────────────────────── -->
+    <!-- ── Shell ─────────────────────────────────────────────────────────── -->
+    <Style TargetType="Shell" ApplyToDerivedTypes="True">
+        <Setter Property="Shell.BackgroundColor"  Value="{StaticResource BgDeep}"/>
+        <Setter Property="Shell.ForegroundColor"  Value="{StaticResource TextPrimary}"/>
+        <Setter Property="Shell.TitleColor"       Value="{StaticResource TextPrimary}"/>
+        <Setter Property="Shell.UnselectedColor"  Value="{StaticResource TextMuted}"/>
+        <Setter Property="Shell.DisabledColor"    Value="{StaticResource TextMuted}"/>
+    </Style>
+
+    <!-- ── Label ─────────────────────────────────────────────────────────── -->
+    <Style TargetType="Label">
+        <Setter Property="TextColor"  Value="{StaticResource TextPrimary}"/>
+        <Setter Property="FontSize"   Value="13"/>
+    </Style>
+
+    <!-- ── Entry ─────────────────────────────────────────────────────────── -->
+    <Style TargetType="Entry">
+        <Setter Property="TextColor"        Value="{StaticResource TextPrimary}"/>
+        <Setter Property="PlaceholderColor" Value="{StaticResource TextMuted}"/>
+        <Setter Property="BackgroundColor"  Value="Transparent"/>
+        <Setter Property="FontSize"         Value="13"/>
+    </Style>
+
+    <!-- ── SearchBar ─────────────────────────────────────────────────────── -->
     <Style TargetType="SearchBar">
-        <Setter Property="TextColor"
-                Value="{AppThemeBinding Light=#2D3748, Dark=#E2E8F0}"/>
-        <Setter Property="PlaceholderColor"
-                Value="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
-        <Setter Property="CancelButtonColor" Value="#718096"/>
-        <Setter Property="FontSize"          Value="14"/>
+        <Setter Property="TextColor"        Value="{StaticResource TextPrimary}"/>
+        <Setter Property="PlaceholderColor" Value="{StaticResource TextMuted}"/>
+        <Setter Property="BackgroundColor"  Value="Transparent"/>
+        <Setter Property="CancelButtonColor" Value="{StaticResource TextMuted}"/>
+        <Setter Property="FontSize"         Value="13"/>
+    </Style>
+
+    <!-- ── Button base ───────────────────────────────────────────────────── -->
+    <Style TargetType="Button">
+        <Setter Property="CornerRadius"  Value="6"/>
+        <Setter Property="FontSize"      Value="13"/>
+        <Setter Property="Padding"       Value="14,8"/>
+        <Setter Property="TextColor"     Value="{StaticResource TextPrimary}"/>
+        <Setter Property="BackgroundColor" Value="{StaticResource BgHighlight}"/>
+        <Setter Property="BorderColor"   Value="{StaticResource Border}"/>
+        <Setter Property="BorderWidth"   Value="1"/>
+    </Style>
+
+    <!-- Button: Primary (blue) -->
+    <Style x:Key="BtnPrimary" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{StaticResource Accent}"/>
+        <Setter Property="TextColor"       Value="White"/>
+        <Setter Property="BorderWidth"     Value="0"/>
+        <Setter Property="CornerRadius"    Value="6"/>
+        <Setter Property="FontSize"        Value="13"/>
+        <Setter Property="Padding"         Value="14,8"/>
+    </Style>
+
+    <!-- Button: Danger (red) -->
+    <Style x:Key="BtnDanger" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{StaticResource ThreatHigh}"/>
+        <Setter Property="TextColor"       Value="White"/>
+        <Setter Property="BorderWidth"     Value="0"/>
+        <Setter Property="CornerRadius"    Value="6"/>
+        <Setter Property="FontSize"        Value="13"/>
+        <Setter Property="Padding"         Value="14,8"/>
+    </Style>
+
+    <!-- Button: Success (green) -->
+    <Style x:Key="BtnSuccess" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{StaticResource ThreatClean}"/>
+        <Setter Property="TextColor"       Value="{StaticResource BgDeep}"/>
+        <Setter Property="BorderWidth"     Value="0"/>
+        <Setter Property="CornerRadius"    Value="6"/>
+        <Setter Property="FontSize"        Value="13"/>
+        <Setter Property="Padding"         Value="14,8"/>
+    </Style>
+
+    <!-- ── Card frame ────────────────────────────────────────────────────── -->
+    <Style x:Key="Card" TargetType="Frame">
+        <Setter Property="BackgroundColor" Value="{StaticResource BgCard}"/>
+        <Setter Property="BorderColor"     Value="{StaticResource Border}"/>
+        <Setter Property="CornerRadius"    Value="10"/>
+        <Setter Property="HasShadow"       Value="False"/>
+        <Setter Property="Padding"         Value="16"/>
+    </Style>
+
+    <!-- ── Section header label ──────────────────────────────────────────── -->
+    <Style x:Key="SectionHeader" TargetType="Label">
+        <Setter Property="FontSize"       Value="11"/>
+        <Setter Property="TextTransform"  Value="Uppercase"/>
+        <Setter Property="CharacterSpacing" Value="2"/>
+        <Setter Property="TextColor"      Value="{StaticResource TextMuted}"/>
+        <Setter Property="Margin"         Value="0,0,0,8"/>
+    </Style>
+
+    <!-- ── Column header ─────────────────────────────────────────────────── -->
+    <Style x:Key="ColHeader" TargetType="Label">
+        <Setter Property="FontSize"       Value="11"/>
+        <Setter Property="FontAttributes" Value="Bold"/>
+        <Setter Property="TextColor"      Value="{StaticResource TextMuted}"/>
+        <Setter Property="Padding"        Value="0,8"/>
+    </Style>
+
+    <!-- ── Mono (hash, IP) ───────────────────────────────────────────────── -->
+    <Style x:Key="Mono" TargetType="Label">
+        <Setter Property="FontFamily"     Value="Courier New, Courier, monospace"/>
+        <Setter Property="FontSize"       Value="11"/>
+        <Setter Property="TextColor"      Value="{StaticResource TextSecondary}"/>
+    </Style>
+
+    <!-- ── Switch ────────────────────────────────────────────────────────── -->
+    <Style TargetType="Switch">
+        <Setter Property="OnColor"   Value="{StaticResource Accent}"/>
+        <Setter Property="ThumbColor" Value="White"/>
+    </Style>
+
+    <!-- ── CheckBox ──────────────────────────────────────────────────────── -->
+    <Style TargetType="CheckBox">
+        <Setter Property="Color" Value="{StaticResource Accent}"/>
+    </Style>
+
+    <!-- ── Slider ────────────────────────────────────────────────────────── -->
+    <Style TargetType="Slider">
+        <Setter Property="MinimumTrackColor" Value="{StaticResource Accent}"/>
+        <Setter Property="MaximumTrackColor" Value="{StaticResource Border}"/>
+        <Setter Property="ThumbColor"        Value="{StaticResource AccentHover}"/>
+    </Style>
+
+    <!-- ── Picker ────────────────────────────────────────────────────────── -->
+    <Style TargetType="Picker">
+        <Setter Property="TextColor"        Value="{StaticResource TextPrimary}"/>
+        <Setter Property="TitleColor"       Value="{StaticResource TextMuted}"/>
+        <Setter Property="BackgroundColor"  Value="Transparent"/>
     </Style>
 
 </ResourceDictionary>
