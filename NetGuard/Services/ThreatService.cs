@@ -97,46 +97,60 @@ public class ThreatService
     public async Task<(bool Blocked, string Detail)> CheckDomainAsync(string domain)
     {
         if (string.IsNullOrEmpty(domain)) return (false, "");
-        try
+
+        // Funzione locale "blindata"
+        async Task<(bool Success, bool Blocked, string Detail)> TryQueryDoHAsync(string url, string providerName)
         {
-            _http.DefaultRequestHeaders.Remove("Accept");
-            _http.DefaultRequestHeaders.Add("Accept", "application/dns-json");
-
-            var url   = $"https://dns.quad9.net/dns-query?name={Uri.EscapeDataString(domain)}&type=A";
-            var resp  = await _http.GetAsync(url);
-            if (!resp.IsSuccessStatusCode) return (false, "");
-
-            var text = await resp.Content.ReadAsStringAsync();
-            if (string.IsNullOrWhiteSpace(text)) return (false, "Empty response from DoH");
-
-            using var doc = JsonDocument.Parse(text);
-            var root = doc.RootElement;
-
-            // Try several common shapes: "Status" (capital), "status" (lowercase), or presence of "Answer" array.
-            int? status = null;
-            if (root.TryGetProperty("Status", out var st1) && st1.ValueKind == JsonValueKind.Number)
-                status = st1.GetInt32();
-            else if (root.TryGetProperty("status", out var st2) && st2.ValueKind == JsonValueKind.Number)
-                status = st2.GetInt32();
-            else if (root.TryGetProperty("Answer", out var ans) || root.TryGetProperty("answer", out ans))
+            try
             {
-                // If there's an Answer array, assume the query returned results -> not blocked
-                return (false, "Clean (has Answer)");
+                // CREA UNA NUOVA RICHIESTA PER EVITARE COLLISIONI DI HEADER
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+                // Aggiungi gli header solo a questa specifica richiesta
+                request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/dns-json"));
+                request.Headers.UserAgent.ParseAdd("NetGuard/1.0 (+https://example)");
+
+                // Invia la richiesta specifica (non usare GetAsync(url) che usa DefaultRequestHeaders)
+                var resp = await _http.SendAsync(request);
+
+                if (resp == null) return (false, false, $"Nessuna risposta da {providerName}");
+                if (!resp.IsSuccessStatusCode)
+                    return (false, false, $"{providerName} status: {(int)resp.StatusCode}");
+
+                var text = await resp.Content.ReadAsStringAsync();
+                if (string.IsNullOrWhiteSpace(text)) return (false, false, "Empty body");
+
+                using var doc = JsonDocument.Parse(text);
+                var root = doc.RootElement;
+
+                int? status = null;
+                if (root.TryGetProperty("Status", out var st1)) status = st1.GetInt32();
+                else if (root.TryGetProperty("status", out var st2)) status = st2.GetInt32();
+
+                if (status == 3) // NXDOMAIN
+                {
+                    string msg = providerName == "Quad9" ? "Bloccato da Quad9 (Malware)" : "Non esistente (Google)";
+                    return (true, true, msg);
+                }
+
+                return (true, false, $"OK su {providerName}");
             }
-
-            if (!status.HasValue)
-                return (false, "Unexpected DoH response format");
-
-            if (status.Value == 3) // NXDOMAIN — Quad9 blocked it
-                return (true, $"Blocked by Quad9 malware-filtering DNS (NXDOMAIN)");
-
-            return (false, $"Clean on Quad9 (status={status.Value})");
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fallimento {providerName}: {ex.Message}");
+                return (false, false, ex.Message);
+            }
         }
-        catch (JsonException jex)
-        {
-            return (false, $"JSON parse error: {jex.Message}");
-        }
-        catch (Exception ex) { return (false, ex.Message); }
+
+        // 1. Tenta prima Google (per vedere se esiste)
+        var googleResult = await TryQueryDoHAsync($"https://8.8.8.8/resolve?name={Uri.EscapeDataString(domain)}&type=A", "Google DNS");
+        if (googleResult.Success) return (googleResult.Blocked, googleResult.Detail);
+
+        // 2. Fallback su Quad9
+        var q9Result = await TryQueryDoHAsync($"https://dns.quad9.net/dns-query?name={Uri.EscapeDataString(domain)}&type=A", "Quad9");
+        if (q9Result.Success) return (q9Result.Blocked, q9Result.Detail);
+
+        return (false, "Sorgenti DNS non raggiungibili");
     }
 
     // ── MalwareBazaar ─────────────────────────────────────────────────────

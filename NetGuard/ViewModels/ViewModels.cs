@@ -200,6 +200,8 @@ public partial class ProcessViewModel : BaseViewModel
     public ObservableCollection<ProcessInfo> Processes { get; } = new();
     private List<ProcessInfo> _all = new();
 
+    private CancellationTokenSource? _scanCts;
+
     public ProcessViewModel(ProcessScannerService scanner, ThreatAnalysisPipeline pipeline)
     {
         _scanner  = scanner;
@@ -209,11 +211,19 @@ public partial class ProcessViewModel : BaseViewModel
     [RelayCommand]
     public async Task ScanAsync()
     {
+        // Cancel any previous scan
+        _scanCts?.Cancel();
+        _scanCts = new CancellationTokenSource();
+        var ct = _scanCts.Token;
+
         SetBusy(true, "Enumerating processes…");
         try
         {
-            _all       = await _scanner.GetProcessesAsync();
+            _all = await _scanner.GetProcessesAsync(ct);
+            if (ct.IsCancellationRequested) return;
+
             TotalCount = _all.Count;
+            ScannedCount = 0;
             ApplyFilter();
 
             SetBusy(true, "Scanning hashes…");
@@ -223,7 +233,9 @@ public partial class ProcessViewModel : BaseViewModel
                 .Where(p => !string.IsNullOrEmpty(p.Path))
                 .Select(async p =>
                 {
+                    if (ct.IsCancellationRequested) return;
                     await _pipeline.AnalyzeProcessAsync(p);
+                    if (ct.IsCancellationRequested) return;
                     MainThread.BeginInvokeOnMainThread(() =>
                     {
                         ScannedCount++;
@@ -239,7 +251,33 @@ public partial class ProcessViewModel : BaseViewModel
 
             await Task.WhenAll(tasks);
         }
-        finally { SetBusy(false); }
+        catch (OperationCanceledException)
+        {
+            // expected if cancelled
+            StatusMessage = "Scan cancelled";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Error during scan: " + ex.Message;
+        }
+        finally
+        {
+            SetBusy(false);
+            _scanCts?.Dispose();
+            _scanCts = null;
+        }
+    }
+
+    [RelayCommand]
+    public Task CancelScanAsync()
+    {
+        try
+        {
+            _scanCts?.Cancel();
+            StatusMessage = "Cancelling scan...";
+        }
+        catch { }
+        return Task.CompletedTask;
     }
 
     partial void OnFilterTextChanged(string value) => ApplyFilter();
