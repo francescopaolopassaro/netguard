@@ -40,6 +40,7 @@
 
   <!-- Images, fonts, raw assets -->
   <ItemGroup>
+  <MauiFont Include="Resources\Fonts\fa-solid-900.ttf" />
     <MauiImage Include="Resources\Images\*" />
     <MauiFont Include="Resources\Fonts\*" />
     <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />

@@ -1,36 +1,40 @@
 using NetGuard.ViewModels;
 using NetGuard.Views;
 using System.Windows.Input;
-
-namespace NetGuard.Views;
-
-public partial class AppShell : Shell
+namespace NetGuard.Views // Assicurati che il namespace sia questo
 {
-    public static AppShell Instance { get; private set; }
-
-    public ICommand ShowAboutCommand { get; }
-
-    public AppShell(MainViewModel vm)
+    public partial class AppShell : Shell
     {
-        InitializeComponent();
-        BindingContext = vm;
-        Instance = this;
+        public static AppShell Instance { get; private set; }
 
-        // Register route names for navigation to detail pages
-        Routing.RegisterRoute("processdetail", typeof(ProcessDetailPage));
-        Routing.RegisterRoute("connectiondetail", typeof(ConnectionDetailPage));
-        Routing.RegisterRoute("alertdetail", typeof(AlertDetailPage));
-        Routing.RegisterRoute("about", typeof(AboutPage));
+        public ICommand ShowAboutCommand { get; }
 
-        ShowAboutCommand = new Command(async () => await Shell.Current.GoToAsync("about"));
-    }
-
-    protected override async void OnAppearing()
-    {
-        base.OnAppearing();
-        if (BindingContext is MainViewModel vm)
+        public AppShell(MainViewModel vm)
         {
-            await vm.InitAsync();
+            InitializeComponent();
+            BindingContext = vm;
+            Instance = this;
+
+            // Registrazione delle route (OBBLIGATORIO!)
+            Routing.RegisterRoute("network", typeof(NetworkPage));
+            Routing.RegisterRoute("process", typeof(ProcessPage));
+            Routing.RegisterRoute("rules", typeof(RulesPage));
+            Routing.RegisterRoute("settings", typeof(SettingsPage));
+            Routing.RegisterRoute("alertdetail", typeof(AlertDetailPage));
+            Routing.RegisterRoute("processdetail", typeof(ProcessDetailPage));
+            Routing.RegisterRoute("connectiondetail", typeof(ConnectionDetailPage));
+            //Routing.RegisterRoute("about", typeof(AboutPage));
+
+            ShowAboutCommand = new Command(async () => await Shell.Current.GoToAsync("about"));
+        }
+
+        protected override async void OnAppearing()
+        {
+            base.OnAppearing();
+            if (BindingContext is MainViewModel vm)
+            {
+                await vm.InitAsync();
+            }
         }
     }
 }

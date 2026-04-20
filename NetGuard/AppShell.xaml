@@ -1,44 +1,81 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<Shell
-    x:Class="NetGuard.Views.AppShell"
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:views="clr-namespace:NetGuard.Views"
-    Title="NetGuard"
-    FlyoutBehavior="Flyout">
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:views="clr-namespace:NetGuard.Views"
+       x:Class="NetGuard.Views.AppShell"
+       FlyoutBehavior="Flyout"
+       Shell.FlyoutBackgroundColor="{StaticResource SurfaceDark}"
+       Shell.BackgroundColor="{StaticResource BackgroundDark}">
 
-    <!-- Header del Flyout -->
+    <Shell.Resources>
+        <ResourceDictionary>
+            <Style x:Key="FloutItemStyle" TargetType="Grid">
+                <Setter Property="VisualStateManager.VisualStateGroups">
+                    <VisualStateGroupList>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal" />
+                            <VisualState x:Name="Selected">
+                                <VisualState.Setters>
+                                    <Setter Property="BackgroundColor" Value="#3B82F6" />
+                                </VisualState.Setters>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateGroupList>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
+    </Shell.Resources>
+
     <Shell.FlyoutHeader>
-        <Grid BackgroundColor="#1A202C" Padding="20,30,20,20">
-            <Label Text="NETGUARD" 
-                   FontSize="26" 
-                   FontAttributes="Bold"
-                   TextColor="White"
-                   HorizontalOptions="Center" />
+        <Grid BackgroundColor="#1E2937" HeightRequest="180" Padding="20">
+            <VerticalStackLayout VerticalOptions="End" Spacing="5">
+                <Label Text="&#xf0ac;" 
+                       FontFamily="FaSolid" 
+                       FontSize="40" 
+                       TextColor="#3B82F6" />
+                <Label Text="NETGUARD" 
+                       FontSize="20" 
+                       FontAttributes="Bold" 
+                       TextColor="White" />
+                <Label Text="v 1.0.2 Premium" 
+                       FontSize="12" 
+                       TextColor="#9CA3AF" />
+            </VerticalStackLayout>
         </Grid>
     </Shell.FlyoutHeader>
 
-    <!-- Voci del menu -->
-    <FlyoutItem Title="Dashboard" Icon="dashboard.png">
+    <FlyoutItem Title="Dashboard">
+        <FlyoutItem.Icon>
+            <FontImageSource FontFamily="FaSolid" Glyph="&#xf015;" Color="White" />
+        </FlyoutItem.Icon>
         <ShellContent ContentTemplate="{DataTemplate views:DashboardPage}" />
     </FlyoutItem>
 
-    <FlyoutItem Title="Processi" Icon="process.png">
-        <ShellContent ContentTemplate="{DataTemplate views:ProcessPage}" />
-    </FlyoutItem>
-
-    <FlyoutItem Title="Connessioni" Icon="network.png">
+    <FlyoutItem Title="Network">
+        <FlyoutItem.Icon>
+            <FontImageSource FontFamily="FaSolid" Glyph="&#xf0ac;" Color="White" />
+        </FlyoutItem.Icon>
         <ShellContent ContentTemplate="{DataTemplate views:NetworkPage}" />
     </FlyoutItem>
 
-    <FlyoutItem Title="Regole Whitelist" Icon="rules.png">
-        <ShellContent ContentTemplate="{DataTemplate views:RulesPage}" />
+    <FlyoutItem Title="Processes">
+        <FlyoutItem.Icon>
+            <FontImageSource FontFamily="FaSolid" Glyph="&#xf085;" Color="White" />
+        </FlyoutItem.Icon>
+        <ShellContent ContentTemplate="{DataTemplate views:ProcessPage}" />
     </FlyoutItem>
 
-    <FlyoutItem Title="Impostazioni" Icon="settings.png">
+    <FlyoutItem Title="Settings">
+        <FlyoutItem.Icon>
+            <FontImageSource FontFamily="FaSolid" Glyph="&#xf013;" Color="White" />
+        </FlyoutItem.Icon>
         <ShellContent ContentTemplate="{DataTemplate views:SettingsPage}" />
     </FlyoutItem>
 
-    <MenuItem Text="About" IconImageSource="info.png" Command="{Binding Source={x:Static views:AppShell.Instance}, Path=ShowAboutCommand}" />
+    <!--<MenuItem Text="About NetGuard" Command="{Binding ShowAboutCommand}">
+        <MenuItem.Icon>
+            <FontImageSource FontFamily="FaSolid" Glyph="&#xf05a;" Color="#9CA3AF" />
+        </MenuItem.Icon>
+    </MenuItem>-->
 
 </Shell>

@@ -1,136 +1,191 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:vm="clr-namespace:NetGuard.ViewModels"
-             xmlns:models="clr-namespace:NetGuard.Models"
+             xmlns:converters="clr-namespace:NetGuard.Converters"
              x:Class="NetGuard.Views.DashboardPage"
              Title="Dashboard">
 
-    <ScrollView>
-        <VerticalStackLayout Padding="24" Spacing="20">
+    <ContentPage.Resources>
+        <converters:ThreatColorConverter x:Key="ThreatColor" />
+    </ContentPage.Resources>
 
-            <!-- Header -->
-            <HorizontalStackLayout Spacing="12">
-                <Label Text="System Overview" FontSize="24" FontAttributes="Bold"
-                       VerticalOptions="Center" TextColor="{AppThemeBinding Light=#1A202C, Dark=#F7FAFC}"/>
-                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}"
-                                   Color="#3182CE" WidthRequest="24" HeightRequest="24"
-                                   VerticalOptions="Center"/>
-                <Button Text="⟳ Refresh" Command="{Binding RefreshCommand}"
-                        BackgroundColor="#3182CE" TextColor="White"
-                        CornerRadius="8" Padding="12,8"
-                        HorizontalOptions="EndAndExpand"/>
-            </HorizontalStackLayout>
+    <ScrollView VerticalScrollBarVisibility="Always">
+        <VerticalStackLayout Spacing="24">
 
-            <!-- Overall Status Banner -->
-            <Frame CornerRadius="12" Padding="20,16" HasShadow="False"
-                   BackgroundColor="{Binding OverallStatusColor}">
-                <HorizontalStackLayout Spacing="12">
-                    <Label Text="●" FontSize="18" TextColor="White" VerticalOptions="Center"/>
-                    <Label Text="{Binding OverallStatus}" FontSize="18" FontAttributes="Bold"
-                           TextColor="White" VerticalOptions="Center"/>
-                </HorizontalStackLayout>
-            </Frame>
+            <!-- Main Header with Logo and Status -->
+            <Border Style="{StaticResource ModernCard}">
+                <Grid ColumnDefinitions="Auto,*,Auto" Padding="24">
+                    <!-- Logo -->
+                    <Label Grid.Column="0"
+                           Text="&#xf0ac;" 
+                           FontFamily="FaSolid"
+                           FontSize="46"
+                           TextColor="#3B82F6"
+                           VerticalOptions="Center" />
 
-            <!-- Stats Grid -->
-            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="12">
-                <!-- Connections -->
-                <Frame Grid.Column="0" CornerRadius="10" Padding="16" HasShadow="False"
-                       BackgroundColor="{AppThemeBinding Light=#EBF8FF, Dark=#2C3E50}">
-                    <VerticalStackLayout Spacing="6">
-                        <Label Text="🌐" FontSize="28" HorizontalOptions="Center"/>
-                        <Label Text="{Binding ActiveConnections}" FontSize="32" FontAttributes="Bold"
-                               HorizontalOptions="Center"
-                               TextColor="{AppThemeBinding Light=#2B6CB0, Dark=#63B3ED}"/>
-                        <Label Text="Connections" FontSize="12" HorizontalOptions="Center"
-                               TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+                    <VerticalStackLayout Grid.Column="1" Margin="20,0,0,0" Spacing="6">
+                        <Label Text="NETGUARD" 
+                               FontSize="34" 
+                               FontAttributes="Bold" 
+                               TextColor="#60A5FA" />
+
+                        <!-- Status with icon and color -->
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <Label Text="{Binding OverallStatusIcon}" 
+                                   FontSize="28"
+                                   FontFamily="FaSolid"
+                                   TextColor="{Binding OverallStatusColor}" />
+                            <Label Text="{Binding OverallStatus}" 
+                                   Style="{StaticResource StatusHeader}" 
+                                   FontSize="26"
+                                   TextColor="{Binding OverallStatusColor}" />
+                        </HorizontalStackLayout>
+
+                        <Label Text="Real-time network &amp; process protection" 
+                               TextColor="{StaticResource TextSecondary}" 
+                               FontSize="15" />
                     </VerticalStackLayout>
-                </Frame>
 
-                <!-- Processes -->
-                <Frame Grid.Column="1" CornerRadius="10" Padding="16" HasShadow="False"
-                       BackgroundColor="{AppThemeBinding Light=#F0FFF4, Dark=#2C3E50}">
-                    <VerticalStackLayout Spacing="6">
-                        <Label Text="⚙" FontSize="28" HorizontalOptions="Center"/>
-                        <Label Text="{Binding ActiveProcesses}" FontSize="32" FontAttributes="Bold"
-                               HorizontalOptions="Center"
-                               TextColor="{AppThemeBinding Light=#276749, Dark=#68D391}"/>
-                        <Label Text="Processes" FontSize="12" HorizontalOptions="Center"
-                               TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
-                    </VerticalStackLayout>
-                </Frame>
+                    <Label Grid.Column="2"
+                           Text="&#xf013;" 
+                           FontFamily="FaSolid"
+                           FontSize="28"
+                           TextColor="{StaticResource TextMuted}"
+                           VerticalOptions="Center" />
+                </Grid>
+            </Border>
 
-                <!-- Threats -->
-                <Frame Grid.Column="2" CornerRadius="10" Padding="16" HasShadow="False"
-                       BackgroundColor="{AppThemeBinding Light=#FFF5F5, Dark=#3D2020}">
-                    <VerticalStackLayout Spacing="6">
-                        <Label Text="⚠" FontSize="28" HorizontalOptions="Center"/>
-                        <Label Text="{Binding ThreatCount}" FontSize="32" FontAttributes="Bold"
-                               HorizontalOptions="Center"
-                               TextColor="{AppThemeBinding Light=#C53030, Dark=#FC8181}"/>
-                        <Label Text="Threats" FontSize="12" HorizontalOptions="Center"
-                               TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
-                    </VerticalStackLayout>
-                </Frame>
+            <!-- Progress Bar (visible during scan/refresh) -->
+            <ProgressBar IsVisible="{Binding IsBusy}" 
+                         Progress="{Binding Progress, Mode=OneWay}" 
+                         HeightRequest="6" 
+                         Margin="10,0" />
 
-                <!-- Alerts -->
-                <Frame Grid.Column="3" CornerRadius="10" Padding="16" HasShadow="False"
-                       BackgroundColor="{AppThemeBinding Light=#FFFAF0, Dark=#2D2820}">
-                    <VerticalStackLayout Spacing="6">
-                        <Label Text="🔔" FontSize="28" HorizontalOptions="Center"/>
-                        <Label Text="{Binding UnreadAlerts}" FontSize="32" FontAttributes="Bold"
-                               HorizontalOptions="Center"
-                               TextColor="{AppThemeBinding Light=#C05621, Dark=#F6AD55}"/>
-                        <Label Text="Unread Alerts" FontSize="12" HorizontalOptions="Center"
-                               TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"/>
+            <!-- Metrics Cards -->
+            <Grid ColumnDefinitions="*,*,*,*" RowDefinitions="Auto" 
+              ColumnSpacing="16" RowSpacing="16">
+
+                <Border Grid.Column="0" Style="{StaticResource ModernCard}">
+                    <VerticalStackLayout Spacing="12" Padding="20" x:Name="ConnCard">
+                        <Label Text="&#xf0ac;" FontFamily="FaSolid" FontSize="42" TextColor="#60A5FA" HorizontalOptions="Center" />
+                        <Label Text="{Binding ActiveConnections}" Style="{StaticResource BigNumber}" HorizontalOptions="Center" />
+                        <Label Text="Active Connections" TextColor="{StaticResource TextSecondary}" HorizontalOptions="Center" />
                     </VerticalStackLayout>
-                </Frame>
+                </Border>
+
+                <Border Grid.Column="1" Style="{StaticResource ModernCard}">
+                    <VerticalStackLayout Spacing="12" Padding="16" 
+                                         x:Name="ProcCard">
+                        <Label Text="&#xf085;" Style="{StaticResource FaIcon}" TextColor="#A78BFA" />
+                        <Label Text="{Binding ActiveProcesses}" Style="{StaticResource BigNumber}" />
+                        <Label Text="Processes" TextColor="{StaticResource TextSecondary}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource ModernCard}">
+                    <VerticalStackLayout Spacing="12" Padding="16" 
+                                         x:Name="ThreatCard">
+                        <Label Text="&#xf06a;" Style="{StaticResource FaIcon}" 
+                               TextColor="{Binding ThreatCount, Converter={StaticResource ThreatColor}}" />
+                        <Label Text="{Binding ThreatCount}" Style="{StaticResource BigNumber}" />
+                        <Label Text="Threats Detected" TextColor="{StaticResource TextSecondary}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border Grid.Column="3" Style="{StaticResource ModernCard}">
+                    <VerticalStackLayout Spacing="12" Padding="16" 
+                                         x:Name="AlertCard">
+                        <Label Text="&#xf0f3;" Style="{StaticResource FaIcon}" TextColor="#F87171" />
+                        <Label Text="{Binding UnreadAlerts}" Style="{StaticResource BigNumber}" />
+                        <Label Text="Unread Alerts" TextColor="{StaticResource TextSecondary}" />
+                    </VerticalStackLayout>
+                </Border>
             </Grid>
 
-            <!-- Recent Alerts -->
-            <HorizontalStackLayout Spacing="12">
-                <Label Text="Recent Alerts" FontSize="18" FontAttributes="Bold"
-                   TextColor="{AppThemeBinding Light=#1A202C, Dark=#F7FAFC}"/>
-                <Button Text="⬇  Export CSV" HorizontalOptions="EndAndExpand"
-                        BackgroundColor="Transparent"
-                        BorderColor="{AppThemeBinding Light=#CBD5E0, Dark=#4A5568}"
-                        TextColor="{AppThemeBinding Light=#4A5568, Dark=#A0AEC0}"
-                        BorderWidth="1" CornerRadius="8" Padding="10,5" FontSize="12"
-                        Clicked="OnExportAlertsClicked"/>
-            </HorizontalStackLayout>
+            <!-- Quick Actions -->
+            <Border Style="{StaticResource ModernCard}">
+                <VerticalStackLayout Spacing="16">
+                    <Label Text="Quick Actions" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
 
-            <CollectionView x:Name="AlertList"
-                            ItemsSource="{Binding RecentAlerts}"
-                            SelectionMode="Single"
-                            SelectionChanged="OnAlertSelected"
-                            EmptyView="No alerts — system is clean ✓"
-                            HeightRequest="380">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="models:Alert">
-                        <Grid Padding="0,4">
-                            <Frame CornerRadius="8" Padding="14,10" HasShadow="False"
-                                   BackgroundColor="{AppThemeBinding Light=#F7FAFC, Dark=#2D3748}">
-                                <Grid ColumnDefinitions="28,*,80">
-                                    <Label Grid.Column="0" Text="{Binding Icon}"
-                                           FontSize="18" VerticalOptions="Center"/>
-                                    <VerticalStackLayout Grid.Column="1" Margin="8,0">
-                                        <Label Text="{Binding Title}" FontAttributes="Bold"
-                                               TextColor="{Binding SeverityColor}"/>
-                                        <Label Text="{Binding Detail}" FontSize="12"
-                                               TextColor="{AppThemeBinding Light=#718096, Dark=#A0AEC0}"
-                                               LineBreakMode="TailTruncation"/>
-                                    </VerticalStackLayout>
-                                    <Label Grid.Column="2"
-                                           Text="{Binding At, StringFormat='{0:HH:mm:ss}'}"
-                                           FontSize="11" VerticalOptions="Start"
-                                           HorizontalOptions="End"
-                                           TextColor="{AppThemeBinding Light=#A0AEC0, Dark=#718096}"/>
-                                </Grid>
-                            </Frame>
-                        </Grid>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+                    <HorizontalStackLayout Spacing="12">
+                        <Button Text="Full Scan"
+        Command="{Binding RefreshCommand}"
+        FontAttributes="Bold"
+        BackgroundColor="#3B82F6"
+        TextColor="White"
+        CornerRadius="12"
+        Padding="24,16"
+        HeightRequest="54">
+                            <Button.ImageSource>
+                                <FontImageSource FontFamily="FaSolid" 
+                                                 Glyph="&#xf04b;" 
+                                                 Color="White" 
+                                                 Size="20" />
+                                                    </Button.ImageSource>
+                                                </Button>
+
+                                                <Button Text="Pause Protection"
+                                BackgroundColor="#1E2937"
+                                TextColor="#E0E7FF"
+                                CornerRadius="12"
+                                Padding="24,16"
+                                HeightRequest="54">
+                                                    <Button.ImageSource>
+                                                        <FontImageSource FontFamily="FaSolid" 
+                                                 Glyph="&#xf023;" 
+                                                 Color="#E0E7FF" 
+                                                 Size="20" />
+                                                    </Button.ImageSource>
+                                                </Button>
+
+                                                <Button Text="Export Report"
+                                Clicked="OnExportAlertsClicked"
+                                BackgroundColor="#1E2937"
+                                TextColor="#E0E7FF"
+                                CornerRadius="12"
+                                Padding="24,16"
+                                HeightRequest="54">
+                                                    <Button.ImageSource>
+                                                        <FontImageSource FontFamily="FaSolid" 
+                                                 Glyph="&#xf0c7;" 
+                                                 Color="#E0E7FF" 
+                                                 Size="20" />
+                                                    </Button.ImageSource>
+                                                </Button>
+                                            </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Recent Alerts -->
+            <Border Style="{StaticResource ModernCard}">
+                <VerticalStackLayout Spacing="18">
+                    <Label Text="Recent Alerts" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+
+                    <CollectionView x:Name="AlertsCollectionView"
+                                    ItemsSource="{Binding RecentAlerts}" 
+                                    HeightRequest="380" 
+                                    SelectionMode="Single"
+                                    SelectionChanged="OnAlertSelected">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource ModernCard}" Padding="18" Margin="0,6">
+                                    <HorizontalStackLayout Spacing="18">
+                                        <Label Text="{Binding Icon}" FontSize="32" VerticalOptions="Center" />
+                                        <VerticalStackLayout Spacing="6" VerticalOptions="CenterAndExpand">
+                                            <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="{StaticResource TextPrimary}" />
+                                            <Label Text="{Binding TimeAgo}" TextColor="{StaticResource TextMuted}" FontSize="13" />
+                                        </VerticalStackLayout>
+                                        <Label Text="{Binding Severity}" 
+                                               Style="{StaticResource ThreatBadge}"
+                                               BackgroundColor="{Binding Severity, Converter={StaticResource ThreatColor}}" 
+                                               HorizontalOptions="End" VerticalOptions="Center" />
+                                    </HorizontalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
 
         </VerticalStackLayout>
     </ScrollView>

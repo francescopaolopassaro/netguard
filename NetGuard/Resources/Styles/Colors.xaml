@@ -1,48 +1,26 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+<?xml version="1.0" encoding="utf-8" ?>
+<ResourceDictionary 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <!-- ── Dark base ─────────────────────────────────────────────────────── -->
-    <Color x:Key="BgDeep">#080B14</Color>
-    <Color x:Key="BgBase">#0D1117</Color>
-    <Color x:Key="BgCard">#161B27</Color>
-    <Color x:Key="BgElevated">#1C2333</Color>
-    <Color x:Key="BgHighlight">#242D3D</Color>
+    <Color x:Key="BackgroundDark">#0A0F1C</Color>
+    <Color x:Key="SurfaceDark">#121A2E</Color>
+    <Color x:Key="CardDark">#1A2339</Color>
+    <Color x:Key="CardBorder">#2A3552</Color>
+    <Color x:Key="GlassOverlay">#FFFFFF0A</Color>
 
-    <!-- ── Text ──────────────────────────────────────────────────────────── -->
-    <Color x:Key="TextPrimary">#E6EDF3</Color>
-    <Color x:Key="TextSecondary">#8B949E</Color>
-    <Color x:Key="TextMuted">#484F58</Color>
+    <Color x:Key="TextPrimary">#E0E7FF</Color>
+    <Color x:Key="TextSecondary">#94A3C0</Color>
+    <Color x:Key="TextMuted">#64748B</Color>
 
-    <!-- ── Accent / Brand ────────────────────────────────────────────────── -->
-    <Color x:Key="Accent">#1F6FEB</Color>
-    <Color x:Key="AccentHover">#388BFD</Color>
-    <Color x:Key="AccentGlow">#1F6FEB40</Color>
+    <Color x:Key="PrimaryAccent">#3B82F6</Color>
+    <Color x:Key="Success">#22C55E</Color>
+    <Color x:Key="Warning">#F59E0B</Color>
+    <Color x:Key="Danger">#EF4444</Color>
 
-    <!-- ── Threat levels ─────────────────────────────────────────────────── -->
     <Color x:Key="ThreatCritical">#FF0040</Color>
     <Color x:Key="ThreatHigh">#FF4444</Color>
     <Color x:Key="ThreatMedium">#FF9500</Color>
     <Color x:Key="ThreatLow">#FFD60A</Color>
-    <Color x:Key="ThreatClean">#30D158</Color>
-    <Color x:Key="ThreatUnknown">#636366</Color>
-
-    <!-- Tinted backgrounds -->
-    <Color x:Key="ThreatCriticalBg">#2D0014</Color>
-    <Color x:Key="ThreatHighBg">#2D0A0A</Color>
-    <Color x:Key="ThreatMediumBg">#2D1A00</Color>
-    <Color x:Key="ThreatLowBg">#2D2500</Color>
-    <Color x:Key="ThreatCleanBg">#0A2D1A</Color>
-
-    <!-- ── Borders ────────────────────────────────────────────────────────── -->
-    <Color x:Key="Border">#21262D</Color>
-    <Color x:Key="BorderActive">#388BFD</Color>
-
-    <!-- ── Status ─────────────────────────────────────────────────────────── -->
-    <Color x:Key="Green">#30D158</Color>
-    <Color x:Key="Red">#FF4444</Color>
-    <Color x:Key="Orange">#FF9500</Color>
-    <Color x:Key="Yellow">#FFD60A</Color>
-    <Color x:Key="Blue">#1F6FEB</Color>
-
+    <Color x:Key="ThreatClean">#22C55E</Color>
 </ResourceDictionary>
